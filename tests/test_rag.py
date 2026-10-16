@@ -1,3 +1,4 @@
+import csv
 import io
 import unittest
 from unittest.mock import Mock
@@ -27,6 +28,14 @@ class RagTests(unittest.TestCase):
             "服务运行在远端，本机访问 localhost:8501 失败": "aup-proxy",
             "文件放在哪里，服务器关闭后还能留着？": "aup-storage",
             "关掉浏览器标签页会停止服务器吗？": "aup-session",
+            "克隆时 destination path already exists，要删除文件夹吗？": "aup-clone-exists",
+            "按启动快捷键没反应，怎么找到那个 task？": "aup-task",
+            "依赖下载 ReadTimeoutError 卡住了": "aup-pip-timeout",
+            "8501 提示 Address already in use，需要换端口吗？": "aup-port-busy",
+            "权重缓存路径能放到 HF_HOME 指定目录吗？": "aup-model-cache",
+            "HIP out of memory，empty_cache 能释放所有显存吗？": "aup-model-oom",
+            "网页 502 Bad Gateway，是进程停止了吗？": "aup-proxy-failure",
+            "runs 中的 CSV 为什么不在 GitHub 上？": "aup-backup",
         }
         for question, expected in cases.items():
             with self.subTest(question=question):

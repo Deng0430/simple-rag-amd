@@ -4,7 +4,8 @@
 
 ## 功能
 
-- 8 条指南和 6 道示例题，涵盖 Python、虚拟环境、GPU、网页启动、文件保存和会话管理。
+- 40 条指南覆盖环境与资源、项目与 Git、Python 与依赖、网页与端口、模型与 GPU、文件与会话。
+- 首页保留 6 道快捷示例；指南库支持主题和关键词筛选，评测数据包含 40 道核对题。
 - 问答、来源查看、CSV 下载，以及可选的 3/6 条检索对比。
 - 没有 GPU 时可使用仅检索预览。
 
@@ -44,8 +45,8 @@ python -m streamlit run app.py
 运行 6 道中文示例题，或用预览模式仅检查检索：
 
 ```bash
-python evaluate.py --output runs/aup_demo.csv
-python evaluate.py --preview --output runs/aup_demo_preview.csv
+python evaluate.py --limit 6 --output runs/aup_demo.csv
+python evaluate.py --preview --limit 40 --output runs/aup_demo_preview_v2.csv
 python -m unittest discover -s tests -v
 ```
 
@@ -58,6 +59,8 @@ python summarize_results.py runs/aup_demo.csv
 结果、环境快照、模型权重、虚拟环境和缓存保留在本地。网页下载的 CSV 也请保存在本地目录。
 
 检索使用字符 2—4 gram TF-IDF，低于相关性门槛的材料会被过滤，所以实际检索数量可能少于 3 或 6。字面相似度和引用不能保证答案正确；耗时不包括模型下载、加载、预热或网页渲染。
+
+当前资料库版本为 `aup_faq_v2`。旧版 8 条指南上的 GPU 问答记录不代表新版 40 条指南全部经过模型验证。本地检索检查只确认目标指南是否出现在检索结果中。
 
 ## SQuAD 检索示例
 
