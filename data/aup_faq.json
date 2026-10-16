@@ -1,0 +1,113 @@
+{
+  "id": "aup_faq_v1",
+  "title": "AUP 云端开发入门指南",
+  "updated": "2026-10-16",
+  "description": "帮助初次使用 AMD AUP Learning Cloud 的中文指南，由作者依据官方文档和本项目的部署设置整理；不代表 AUP 官方支持。",
+  "retriever": {"analyzer": "char", "min_score": 0.04},
+  "prompt_profile": "aup",
+  "max_new_tokens": 384,
+  "passages": [
+    {
+      "id": "aup-resource",
+      "title": "选择开发环境与 GPU 资源",
+      "category": "环境准备",
+      "keywords": "选哪个资源 新手 环境 GPU CPU VSCode Code Server 模型 推理",
+      "scope": "平台一般流程；资源名称和可选硬件以当前账号页面为准。",
+      "text": "在 AUP 中编写 Python、多文件项目或运行网页，可以选择 Code Server 开发环境。只查看检索网页可使用 CPU；运行本项目的模型问答需要 GPU。本示例使用 Development Environments 下的 VSCode Server GPU，对应文档中的 Code Server GPU Environment。选择资源和运行时长后点击 Launch Server。首次安装和下载模型需要额外时间。可选 GPU、计费配额和时长以账号启动页为准，本助手不能查询剩余配额，也不能保证获得某个 GPU 型号。",
+      "sources": [
+        {"title": "AUP Platform Basics：Choose An Environment / Launch A Server", "url": "https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html", "kind": "官方文档", "checked_on": "2026-10-16"}
+      ]
+    },
+    {
+      "id": "aup-python",
+      "title": "python: command not found：先检查 python3",
+      "category": "环境准备",
+      "keywords": "python 命令不存在 找不到 command not found python3 解释器",
+      "scope": "本项目 2026-10-16 使用的 AUP 镜像；其他镜像的命令可能不同。",
+      "text": "终端提示 python: command not found，表示当前环境找不到名为 python 的命令，不能据此判断 Python 完全没有安装。本项目实测镜像提供的是 /usr/bin/python3。先运行 `python3 --version`；如果成功，后续使用 python3。需要确认解释器路径可运行 `python3 -c \"import sys; print(sys.executable)\"`。项目虚拟环境创建后，使用 `.venv/bin/python` 运行项目命令。如果 python3 也找不到，请确认启动的资源是否包含 Python，并查看该环境说明或联系管理员。无需仅为获得 python 这个命令而重装整套环境。",
+      "sources": [
+        {"title": "Python 3.12：venv 与 ensurepip / system-site-packages", "url": "https://docs.python.org/3.12/library/venv.html", "kind": "官方文档", "checked_on": "2026-10-16"},
+        {"title": "项目启动脚本：Python 环境与依赖准备", "url": "https://github.com/Deng0430/simple-rag-amd/blob/main/start_aup.sh", "kind": "项目实现", "checked_on": "2026-10-16"}
+      ]
+    },
+    {
+      "id": "aup-venv",
+      "title": "创建虚拟环境缺少 ensurepip，以及保留 ROCm PyTorch",
+      "category": "环境准备",
+      "keywords": "ensurepip venv virtualenv 虚拟环境 创建失败 依赖 安装 ROCm torch pip",
+      "scope": "适用于本仓库和已预装可用 ROCm PyTorch 的 AUP GPU 环境。",
+      "text": "Python 的 venv 默认调用 ensurepip 安装 pip；精简镜像缺少 ensurepip 时，`python3 -m venv --system-site-packages .venv` 可能失败。本项目已提供替代流程：在 `/home/jovyan/simple-rag-amd` 目录运行 `bash start_aup.sh`。脚本先尝试标准 venv，失败时从 `https://bootstrap.pypa.io/virtualenv.pyz` 下载 PyPA 官方 virtualenv zipapp 来创建环境，然后安装项目依赖并启动网页。脚本使用 --system-site-packages 继承平台已安装的 ROCm PyTorch，并约束 torch 版本。这条流程无需 sudo；需要能访问官方分发地址。不要直接用普通 PyPI 的 torch 包覆盖平台已配置的 ROCm 构建。",
+      "sources": [
+        {"title": "Python 3.12：venv 与 ensurepip / system-site-packages", "url": "https://docs.python.org/3.12/library/venv.html", "kind": "官方文档", "checked_on": "2026-10-16"},
+        {"title": "本项目启动脚本：virtualenv 备用流程", "url": "https://github.com/Deng0430/simple-rag-amd/blob/main/start_aup.sh", "kind": "项目实现与实测", "checked_on": "2026-10-16"}
+      ]
+    },
+    {
+      "id": "aup-gpu",
+      "title": "检查 AMD GPU：为什么使用 torch.cuda",
+      "category": "环境准备",
+      "keywords": "显卡 GPU 是否可用 检测 AMD cuda HIP ROCm 型号 内存",
+      "scope": "PyTorch ROCm 接口；硬件型号和可用性必须从当前运行环境读取。",
+      "text": "PyTorch 的 ROCm/HIP 后端复用 torch.cuda 接口，因此 AMD GPU 上使用 torch.cuda 并不表示正在使用 NVIDIA 显卡。可运行 `python3 -c \"import torch; print('torch:', torch.__version__, 'ROCm:', torch.version.hip, 'GPU:', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'No GPU')\"`。torch.version.hip 显示 HIP 构建信息，is_available() 检查当前是否能使用 GPU。若显示 False，先确认选择了 GPU 资源以及当前 Python 能访问平台的 ROCm PyTorch。运行时可见总内存不等于当前空闲或独占显存。",
+      "sources": [
+        {"title": "PyTorch：HIP Interfaces Reuse the CUDA Interfaces / Checking for HIP", "url": "https://docs.pytorch.org/docs/stable/notes/hip.html", "kind": "官方文档", "checked_on": "2026-10-16"}
+      ]
+    },
+    {
+      "id": "aup-streamlit",
+      "title": "在云端启动本项目的 Streamlit 网页",
+      "category": "网页运行",
+      "keywords": "Streamlit 启动 启动命令 8501 app.py 运行程序 网页服务",
+      "scope": "适用于已经克隆本仓库的 AUP GPU 环境。",
+      "text": "在 Code Server 的 Terminal → New Terminal 打开终端。进入仓库并启动：`cd /home/jovyan/simple-rag-amd && bash start_aup.sh`。脚本会准备依赖，然后运行 Streamlit 并监听 0.0.0.0:8501。依赖已安装时也可直接运行 `.venv/bin/python -m streamlit run app.py --server.address=0.0.0.0 --server.port=8501 --browser.gatherUsageStats=false`。终端出现 You can now view your Streamlit app 表示服务已启动。保留该进程运行，用平台端口预览访问网页；按 Ctrl+C 会停止该进程。首次点击模型问答会下载并加载模型，需等待。",
+      "sources": [
+        {"title": "Streamlit：streamlit run", "url": "https://docs.streamlit.io/develop/api-reference/cli/run", "kind": "官方文档", "checked_on": "2026-10-16"},
+        {"title": "Streamlit：server.address / server.port", "url": "https://docs.streamlit.io/develop/api-reference/configuration/config.toml", "kind": "官方文档", "checked_on": "2026-10-16"},
+        {"title": "本项目启动脚本", "url": "https://github.com/Deng0430/simple-rag-amd/blob/main/start_aup.sh", "kind": "项目实现与实测", "checked_on": "2026-10-16"}
+      ]
+    },
+    {
+      "id": "aup-proxy",
+      "title": "Streamlit 已启动但网页打不开：使用端口代理",
+      "category": "网页运行",
+      "keywords": "网页打不开 无法访问 localhost 127.0.0.1 8501 端口 代理 转发 proxy 浏览器 地址",
+      "scope": "AUP Code Server 的 HTTP / WebSocket 服务端口预览。",
+      "text": "Streamlit 在云端运行时，本机浏览器中的 localhost 或 127.0.0.1 指向本机，不会自动连接到云端服务。先确认 AUP 会话仍在运行、终端进程没有停止、服务监听预期端口 8501。打开 Code Server 底部的 PORTS 面板，添加或选择 8501，打开平台提供的转发地址；通知中的 Open in Browser 也可使用。官方示例地址格式为 `https://tpe.aupcloud.io/user/<your-username>/proxy/<port>/`。这是模板，不可原样打开；优先使用平台生成的当前账号地址，保留登录状态。这个 demo 的端口为 8501。服务停止或会话到期后，代理地址也无法继续提供网页。",
+      "sources": [
+        {"title": "AUP Code Server Guide：Port Forwarding / Troubleshooting", "url": "https://amdresearch.github.io/aup-learning-cloud/user-guide/code-server-guide.html", "kind": "官方文档", "checked_on": "2026-10-16"}
+      ]
+    },
+    {
+      "id": "aup-storage",
+      "title": "会话到期前保存代码和结果",
+      "category": "会话管理",
+      "keywords": "保存 文件 丢失 持久目录 下载 CSV 代码 结果 会话到期 时间到了 重启",
+      "scope": "官方目录说明与本项目保存方式；不能恢复已经丢失的文件。",
+      "text": "AUP 官方文档将 `/home/jovyan` 列为持久用户目录，重要代码、作业和结果应保存到这里。`/ryzers/notebooks` 等镜像提供的目录可能在环境停止或切换时重置。会话到期前保存编辑器中的文件，并把重要文件放入 /home/jovyan；本项目目录为 `/home/jovyan/simple-rag-amd`。网页回答保存在当前会话中，需要点击“下载本次结果 CSV”保存到本机。命令行评测则可将 CSV 写到项目的 runs 目录。会话到期会停止程序，持久文件与运行中的进程不是同一回事；重启后需要再次运行启动命令。若文件已不在磁盘或备份中，本助手不能找回。",
+      "sources": [
+        {"title": "AUP Platform Basics：Save Important Files / My files disappeared after restart", "url": "https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html", "kind": "官方文档", "checked_on": "2026-10-16"},
+        {"title": "本项目网页与结果保存方式", "url": "https://github.com/Deng0430/simple-rag-amd/blob/main/README.md", "kind": "项目实现", "checked_on": "2026-10-16"}
+      ]
+    },
+    {
+      "id": "aup-session",
+      "title": "结束使用与重新启动会话",
+      "category": "会话管理",
+      "keywords": "停止服务器 关闭浏览器 标签页 退出 会话 重启 重新启动 续用 资源 配额",
+      "scope": "平台会话管理；不承诺具体配额或持续在线时间。",
+      "text": "用完 AUP 后先保存文件，再返回 Hub 控制页点击 Stop my server，并等待服务器停止。仅关闭浏览器标签页或退出登录不一定会停止远端服务器。下次使用时重新选择环境和运行时长，启动后打开终端。若本仓库已保存在 /home/jovyan，可运行 `cd /home/jovyan/simple-rag-amd && git pull --ff-only && bash start_aup.sh` 更新并启动。若 git pull 因本地修改或网络问题失败，后续启动不会执行，应先查看具体错误。单独停止本项目网页可在其终端按 Ctrl+C；这不等于关闭整个云端资源。具体剩余配额、续时选项和资源可用性请查看平台页面。",
+      "sources": [
+        {"title": "AUP Platform Basics：Stop Your Server / Launch A Server", "url": "https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html", "kind": "官方文档", "checked_on": "2026-10-16"},
+        {"title": "本项目重启步骤", "url": "https://github.com/Deng0430/simple-rag-amd/blob/main/README.md", "kind": "项目实现与实测", "checked_on": "2026-10-16"}
+      ]
+    }
+  ],
+  "questions": [
+    {"id": "aup-q01", "question": "为什么终端提示 python: command not found？", "passage_id": "aup-python", "answers": ["先检查 python3 --version；本项目镜像使用 python3，项目环境创建后可使用 .venv/bin/python。"]},
+    {"id": "aup-q02", "question": "创建虚拟环境提示缺少 ensurepip，怎么办？", "passage_id": "aup-venv", "answers": ["在本项目目录运行 bash start_aup.sh；它在标准 venv 失败时使用 PyPA virtualenv，并继承 ROCm PyTorch。"]},
+    {"id": "aup-q03", "question": "Streamlit 启动了，但浏览器里网页打不开，应该用什么地址？", "passage_id": "aup-proxy", "answers": ["确认服务和会话在运行，在 Code Server 的 PORTS 面板打开 8501 的转发地址；云端 localhost 不是本机可直接访问的地址。"]},
+    {"id": "aup-q04", "question": "会话快到期了，代码和问答结果要怎么保存？", "passage_id": "aup-storage", "answers": ["代码和磁盘结果保存到 /home/jovyan；网页结果点击下载 CSV 保存到本机；重启后需要重新启动程序。"]},
+    {"id": "aup-q05", "question": "我用的是 AMD 显卡，为什么检查 GPU 却用 torch.cuda？", "passage_id": "aup-gpu", "answers": ["ROCm 后端复用 torch.cuda；检查 torch.version.hip 和 torch.cuda.is_available()。"]},
+    {"id": "aup-q06", "question": "运行这个问答网页，应该选 CPU 还是 GPU 环境？", "passage_id": "aup-resource", "answers": ["仅检索预览可用 CPU；本项目模型问答需要 Code Server GPU，具体可选资源以账号页面为准。"]}
+  ]
+}

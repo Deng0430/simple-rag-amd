@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "启动 AUP 入门助手",
+      "detail": "在 AUP GPU 环境中检查依赖并启动 8501 网页；启动后从 PORTS 面板访问。",
+      "type": "process",
+      "command": "bash",
+      "args": ["${workspaceFolder}/start_aup.sh"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "group": {"kind": "build", "isDefault": true},
+      "runOptions": {"instanceLimit": 1},
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    }
+  ]
+}
