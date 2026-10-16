@@ -14,7 +14,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 DEFAULT_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
-DEFAULT_DATA = Path(__file__).parent / "data" / "aup_faq.json"
+DEFAULT_DATA = Path(__file__).parent / "data" / "archive" / "aup_faq_v2.json"
 NO_EVIDENCE = "现有指南中没有找到足够相关的材料。可以换一种问法，或查看 AUP 官方文档。"
 
 
@@ -30,6 +30,10 @@ def load_data(path: str | Path = DEFAULT_DATA) -> dict:
 
 
 class Retriever:
+    name = "tfidf"
+    score_kind = "TF-IDF 余弦相似度"
+    model_id = None
+
     def __init__(self, passages: list[dict], *, analyzer: str = "word",
                  min_score: float = 0.0):
         self.passages = passages
@@ -82,6 +86,9 @@ def make_messages(question: str, passages: list[dict], profile: str = "general")
             "When a web button is the documented action, describe that action without inventing a terminal substitute. "
             "Do not invent a username, URL, GPU, quota, account state or recovery promise. "
             "Distinguish general platform rules from observations specific to this project. "
+            "Official manuals can contain generic examples that do not match this project's environment. "
+            "Prefer the project's explicit setup steps when the question concerns this project. "
+            "Never suggest overwriting the platform's ROCm PyTorch with a generic torch installation. "
             "You cannot inspect accounts or execute commands for the user. "
             "If a necessary fact is absent, explicitly say that the guides do not provide it."
         )
@@ -187,6 +194,15 @@ def run_query(retriever: Retriever, question: str, k: int,
         "generation_seconds": None, "torch_peak_allocated_gib": None,
         "retrieval_seconds": retrieval_seconds, "passages": passages,
         "knowledge_base": knowledge_base,
+        "retriever": retriever.name,
+        "retriever_model": getattr(retriever, "model_id", None),
+        "score_kind": retriever.score_kind,
+        "min_score": retriever.min_score,
+        "index_seconds": getattr(retriever, "index_seconds", None),
+        "index_cache_hit": getattr(retriever, "cache_hit", None),
+        "index_dimensions": retriever.matrix.shape[1] if retriever.name == "dense" else None,
+        "indexed_passages": len(retriever.passages),
+        "embedding_revision": getattr(retriever, "artifact", {}).get("revision"),
         "retrieved_count": len(passages),
         "status": "matched" if passages else "no_evidence",
         "notice": "" if passages else NO_EVIDENCE,
@@ -203,6 +219,7 @@ def rows_for_csv(results: list[dict]) -> list[dict]:
     for result in results:
         row = {key: value for key, value in result.items() if key != "passages"}
         row["passage_ids"] = ";".join(p["id"] for p in result["passages"])
+        row["passage_scores"] = ";".join(f"{p['score']:.6f}" for p in result["passages"])
         rows.append(row)
     return rows
 

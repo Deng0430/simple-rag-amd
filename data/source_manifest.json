@@ -1,0 +1,26 @@
+{
+  "id": "aup_official_docs_v1",
+  "description": "完整 AUP 用户指南（4 页）与指定的相关开发文档。只下载清单页面，不递归抓取全站。下载正文存放于 .cache/knowledge，不随代码再分发。",
+  "sources": [
+    {"id":"aup-overview","title":"AUP User Guide Overview","url":"https://amdresearch.github.io/aup-learning-cloud/user-guide/index.html","category":"AUP 用户指南","required":true},
+    {"id":"aup-platform","title":"AUP Platform Basics","url":"https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html","category":"AUP 用户指南","required":true},
+    {"id":"aup-jupyter","title":"AUP JupyterLab Guide","url":"https://amdresearch.github.io/aup-learning-cloud/user-guide/jupyterlab-guide.html","category":"AUP 用户指南","required":true},
+    {"id":"aup-code","title":"AUP Code Server Guide","url":"https://amdresearch.github.io/aup-learning-cloud/user-guide/code-server-guide.html","category":"AUP 用户指南","required":true},
+    {"id":"python-venv","title":"Python 3.12 venv","url":"https://docs.python.org/3.12/library/venv.html","category":"Python 与依赖"},
+    {"id":"python-sys","title":"Python 3.12 sys","url":"https://docs.python.org/3.12/library/sys.html","category":"Python 与依赖"},
+    {"id":"pip-guide","title":"pip User Guide","url":"https://pip.pypa.io/en/stable/user_guide/","category":"Python 与依赖"},
+    {"id":"pip-check","title":"pip check","url":"https://pip.pypa.io/en/stable/cli/pip_check/","category":"Python 与依赖"},
+    {"id":"pip-options","title":"pip General Options","url":"https://pip.pypa.io/en/stable/cli/pip/","category":"Python 与依赖"},
+    {"id":"git-clone","title":"Git clone","url":"https://git-scm.com/docs/git-clone","category":"项目与 Git"},
+    {"id":"git-pull","title":"Git pull","url":"https://git-scm.com/docs/git-pull","category":"项目与 Git"},
+    {"id":"git-status","title":"Git status","url":"https://git-scm.com/docs/git-status","category":"项目与 Git"},
+    {"id":"git-diff","title":"Git diff","url":"https://git-scm.com/docs/git-diff","category":"项目与 Git"},
+    {"id":"vscode-tasks","title":"VS Code Tasks","url":"https://code.visualstudio.com/docs/debugtest/tasks","category":"项目与 Git"},
+    {"id":"streamlit-run","title":"Streamlit run","url":"https://docs.streamlit.io/develop/api-reference/cli/run","category":"网页与端口"},
+    {"id":"streamlit-config","title":"Streamlit config.toml","url":"https://docs.streamlit.io/develop/api-reference/configuration/config.toml","category":"网页与端口"},
+    {"id":"torch-hip","title":"PyTorch 2.9 HIP semantics","url":"https://docs.pytorch.org/docs/2.9/notes/hip.html","category":"模型与 GPU"},
+    {"id":"hf-download","title":"Hugging Face Hub Download files","url":"https://huggingface.co/docs/huggingface_hub/en/guides/download","category":"模型与 GPU"},
+    {"id":"hf-cache","title":"Hugging Face Hub Understand caching","url":"https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache","category":"模型与 GPU"},
+    {"id":"hf-env","title":"Hugging Face Hub Environment variables","url":"https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables","category":"模型与 GPU"}
+  ]
+}

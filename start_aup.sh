@@ -45,6 +45,13 @@ PY
 echo "Installing the web app dependencies..."
 "$venv_python" -m pip install -c .cache/aup-constraints.txt -r requirements.txt
 
+if [[ ! -f .cache/knowledge/corpus.json ]]; then
+    echo "Preparing the official documentation corpus (cached for future starts)..."
+    if ! "$venv_python" prepare_knowledge.py; then
+        echo "Documentation download did not finish. The web page can retry; project notes remain available."
+    fi
+fi
+
 echo "Starting Streamlit on port 8501. Open it through AUP's port preview or proxy."
 exec "$venv_python" -m streamlit run app.py \
     --server.address=0.0.0.0 --server.port=8501 --browser.gatherUsageStats=false

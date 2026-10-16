@@ -1,47 +1,59 @@
-# AUP 入门助手：部署与使用
+# AUP 入门助手：部署与演示
 
-这个网页从固定的中文指南中检索 AUP 云端开发相关说明，生成简短回答并展示引用。用户也可以直接浏览指南，或在本地预览检索结果。
+这个小型 RAG 网页面向初次在 AUP 开发的学生。它从官方文档和项目说明中查找依据，再生成操作建议；也能直接查阅原文、比较检索效果。
 
-## 适用范围
+## 资料范围
 
-知识库 `aup_faq_v2` 包含 40 条指南与 40 道核对题，覆盖环境与资源、项目与 Git、Python 与依赖、网页与端口、模型与 GPU、文件与会话。首页保留 6 道快捷示例，完整资料可按主题或关键词筛选。它不查询账户余额或服务器状态，不会替用户执行命令、恢复文件或控制会话。账号状态、资源配额和可用硬件请以 AUP 页面为准。
+当前知识库为 `aup_documents_v1`：AUP 用户指南全部 4 页正文与 16 页相关开发文档，加 `docs/project-usage.md`。清单见 `data/source_manifest.json`。网页显示实际成功导入的页面与片段数量，不把未下载的页面计入。这里没有收集 AUP 网站之外的全部工具文档。
 
-资料按来源标注适用范围；特定环境中的观察不能代表所有 AUP 镜像。模型只会收到检索出的指南。若回答没有得到资料支持，应以来源原文及平台说明为准。
+第三方正文下载至 `.cache/knowledge/`，按章节和约 1000 字符切分，记录原始页面、章节锚点与抓取日期。本项目说明保留自身的启动方法、ROCm 约束和部署经验。旧版 40 条中文 FAQ 已归档，正文不参与正式检索；首页沿用其中 6 道问题的提问文字。
 
-## 部署步骤
+## 启动步骤
 
 1. 在 AUP 启动 **Development Environments → VSCode Server GPU**，打开 Code Server。
-2. 将仓库克隆到持久目录 `/home/jovyan`。若仓库已存在，可运行 `cd /home/jovyan/simple-rag-amd && git pull --ff-only` 更新。
-3. 在 VS Code 使用 **File → Open Folder** 打开项目文件夹。按 **Ctrl+Shift+B** 启动默认任务；也可在项目终端运行 `bash start_aup.sh`。
-4. 服务启动后，在 **PORTS 面板**打开 8501 端口的转发地址。
-5. 首次点击问答按钮时会下载或加载模型。网页进程可在任务终端按 Ctrl+C 停止；关闭 AUP 资源请使用 Hub 上的 **Stop my server**。
+2. 用 **File → Open Folder** 打开 `/home/jovyan/simple-rag-amd`。已克隆时先停止旧网页，按需执行 `git pull --ff-only` 更新。
+3. 按 **Ctrl+Shift+B** 启动默认任务，或在终端执行 `bash /home/jovyan/simple-rag-amd/start_aup.sh`。
+4. 服务启动后，从 Code Server **PORTS 面板**打开 8501 的转发地址。
+5. 首次使用 E5 或生成模型需要下载和准备。演示前先各运行一次；按 Ctrl+C 停止网页，在 Hub 使用 **Stop my server** 停止整个资源。
 
-仅在终端切换目录不会加载项目的 VS Code 任务。任务使用 `start_aup.sh` 检查 GPU、准备环境、安装依赖并启动网页；它不会启动 AUP 资源或替用户更新仓库。若快捷键被浏览器占用，可在 VS Code 命令面板选择 **Tasks: Run Task → 启动 AUP 入门助手**。
+仅在终端进入目录不会自动加载 VS Code 任务；快捷键失效时，可用命令面板 **Tasks: Run Task → 启动 AUP 入门助手**。启动脚本检查 GPU，准备继承系统包的虚拟环境，安装依赖并首次导入原文，保留平台 ROCm PyTorch。它不会替用户启动 AUP 资源或更新 Git 仓库。
 
-脚本优先使用 `python3`，在标准虚拟环境不可用时会使用 PyPA 官方 virtualenv zipapp，并复用平台 PyTorch。请勿安装普通 PyPI PyTorch 覆盖 ROCm 构建。
+本地预览可运行：
 
-## 本地检索预览
+```bash
+python -m pip install -r requirements.txt
+python prepare_knowledge.py
+python -m streamlit run app.py
+```
 
-安装 Streamlit 和 scikit-learn 后，运行 `python -m streamlit run app.py`，打开页面并选择“仅检索预览”。预览模式不需要模型或 GPU，也不会生成答案。
+没有 GPU 时选择“仅检索预览”。下载未完成时，页面显示当前资料状态，可以点击“准备官方文档库”重试。已有文档默认不重新下载；显式更新用 `python prepare_knowledge.py --refresh`。
 
-## 资料来源
+## 建议演示流程
 
-| 来源 | 支持的内容 |
-| --- | --- |
-| [AUP Platform Basics](https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html) | 资源选择、持久目录及会话管理 |
-| [AUP Code Server Guide](https://amdresearch.github.io/aup-learning-cloud/user-guide/code-server-guide.html) | 终端、PORTS 面板和网页访问 |
-| [Python venv](https://docs.python.org/3.12/library/venv.html) | 虚拟环境及系统包访问 |
-| [PyTorch HIP semantics](https://docs.pytorch.org/docs/stable/notes/hip.html) | ROCm/HIP 下的 `torch.cuda` 接口 |
-| [Streamlit run](https://docs.streamlit.io/develop/api-reference/cli/run) 与 [config.toml](https://docs.streamlit.io/develop/api-reference/configuration/config.toml) | 网页运行及服务配置 |
-| [项目启动脚本](../start_aup.sh) | 环境检查、依赖准备与网页启动 |
-| [资料署名与来源](../data/ATTRIBUTION.md) | 指南和示例数据的来源、许可 |
-| Git 官方命令文档、pip 官方文档 | 仓库克隆、更新和依赖检查，具体页面见每条指南 |
-| Hugging Face Hub 官方文档 | 模型下载、缓存路径和环境变量，具体页面见每条指南 |
+1. 选择“仅检索预览”，展开“演示参数”。保持 Top-k 为 3，选择“对比三种检索器（只检索）”。
+2. 输入 `为什么 AMD 显卡也使用 torch.cuda 接口？`，点击“比较检索效果”。查看三个检索器的排名、资料内容、来源链接及耗时。
+3. 选择“单次检索”和一种检索器，切换“模型问答”，询问本项目的启动方法。核对回答中的引用与命令，再下载 CSV。
+4. 打开“资料库”，按主题或关键词查找一段原文，展示完整来源。无需逐条演示全部资料。
 
-## 验证与边界
+TF-IDF 使用字符 n-gram，BM25 使用中文分词和 API 词元，E5 使用多语言嵌入。稠密检索在 CPU 编码与搜索，生成模型在 AMD GPU 运行。这两个模型有独立的缓存和准备阶段。
 
-网页的本地验证包括示例问答、指南来源展开、检索预览和无匹配提示。GPU 问答需要在具有可用 ROCm PyTorch 的 AUP 资源上运行。评测脚本逐题输出 CSV 和环境快照至本地 `runs/`，不需要把生成结果加入 Git 仓库。
+当前片段数量较少，E5 文档向量保存在 `.cache/retrieval/*.npz`，查询时编码问题并与矩阵计算余弦相似度，无需运行额外的数据库。正文或嵌入模型版本变化时自动重新编码。缓存不随 GitHub 发布，云端首次使用会自行准备。
 
-批量检查新版 40 道核对题可运行 `python evaluate.py --preview --limit 40 --output runs/aup_demo_preview_v2.csv`。这只检查检索，不会生成答案，也不能作为回答正确率。新增故障处理说明来自官方文档与项目实现，未宣称每种故障都在云端复现。
+## 对比与结果记录
 
-检索基于字符 TF-IDF，相似度是词面相关性指标，不是答案正确概率。无匹配时网页会跳过模型生成；存在部分词语重合但资料仍不足时，模型仍可能生成不准确内容。引用材料供用户核对，不能替代平台官方说明。
+```bash
+python evaluate.py --preview --retriever all --limit 6 --output runs/retrieval_comparison.csv
+python evaluate.py --retriever dense --limit 6 --output runs/aup_demo.csv
+```
+
+AUP 使用 `.venv/bin/python`。批量生成前停网页，避免同时加载两份生成模型。结果和环境快照保存在本地 `runs/`，不自动上传 GitHub；网页 CSV 应在刷新或重启前下载。
+
+三种检索器对比只检索，答案、生成模型与 token 字段为空。分数不是正确率，也不能跨算法比较数值。检索计时包括问题向量化与搜索，不包括文档索引首次构建；索引准备时间单独记录。
+
+旧 FAQ/SQuAD 结果仅对应当时的资料版本。新原文库的本地检索测试不等于完成真实 AMD GPU 问答验证。报告数据应使用当前版本重新生成并人工核对答案。
+
+## 使用边界
+
+助手不读取账户配额、服务器状态或本地文件，不代替用户执行命令。官方文档中的通用例子未必适用于本项目，应核对版本和项目前提，尤其不要用普通 torch 安装覆盖 ROCm 构建。E5 的语义门槛尚未校准，无关问题也可能返回片段；引用供核对，不能保证回答正确。
+
+资料的完整 URL 与许可说明见 [资料清单](../data/source_manifest.json) 和 [ATTRIBUTION.md](../data/ATTRIBUTION.md)。

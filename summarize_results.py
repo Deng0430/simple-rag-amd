@@ -10,6 +10,10 @@ from statistics import mean, median
 def summarize(rows):
     if not rows or any(row["mode"] != "model" for row in rows):
         raise ValueError("Expected nonempty model results, not retrieval previews.")
+    # Historical CSV files predate the retriever field and used TF-IDF only.
+    methods = {row.get("retriever") or "tfidf" for row in rows}
+    if len(methods) != 1:
+        raise ValueError("Mixed retrievers must be summarized separately; filter the CSV by retriever first.")
     groups = {}
     for k in sorted({int(row["top_k"]) for row in rows}):
         group = [row for row in rows if int(row["top_k"]) == k]
@@ -30,7 +34,7 @@ def summarize(rows):
             "correct_count": correct,
             "reviewed_correctness": correct / len(graded) if graded else None,
         }
-    result = {"groups": groups}
+    result = {"retriever": next(iter(methods)), "groups": groups}
     if "3" in groups and "6" in groups:
         small, large = groups["3"], groups["6"]
         result["reductions_relative_to_k6_percent"] = {

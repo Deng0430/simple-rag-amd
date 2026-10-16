@@ -35,11 +35,14 @@
 
 /* Sidebar controls and real runtime status. */
 [data-testid="stSidebar"] {background: #edf2f8; border-right: 1px solid var(--aup-line);}
-[data-testid="stSidebar"][data-collapsed="false"] {width: 264px !important;}
+[data-testid="stSidebar"][data-collapsed="false"] {
+    width: 360px !important;
+    max-width: calc(100vw - 24px);
+}
 [data-testid="stSidebarContent"] {padding-top: 0;}
 [data-testid="stSidebarHeader"] {height: 42px; padding: .4rem 1rem;}
 [data-testid="stSidebarHeader"] button {visibility: visible;}
-[data-testid="stSidebarUserContent"] {padding: .5rem 1.4rem 1.5rem;}
+[data-testid="stSidebarUserContent"] {padding: .5rem 1.25rem 1.5rem;}
 [data-testid="stSidebarUserContent"] > div > [data-testid="stVerticalBlock"] {gap: .65rem;}
 .aup-brand {display: flex; gap: 12px; align-items: center; margin: .3rem 0 .8rem;}
 .aup-brand-mark {width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; color: white; background: var(--aup-blue); border-radius: 12px 12px 12px 4px;}
@@ -56,6 +59,9 @@
 .sidebar-footnote {font-size: .73rem; color: var(--aup-muted); margin: .7rem 0 .2rem; line-height: 1.8;}
 [data-testid="stSidebar"] [data-testid="stExpander"] {background: transparent;}
 [data-testid="stSidebar"] [data-testid="stExpander"] summary p {font-size: .8rem;}
+[data-testid="stSidebar"] [data-testid="stExpanderDetails"] {padding: .25rem .75rem .75rem;}
+/* Menus render in a portal, outside the sidebar; keep long labels readable. */
+[role="listbox"] [role="option"] {white-space: normal; overflow-wrap: anywhere; height: auto;}
 
 /* Useful context replaces the empty top strip. */
 .page-meta {display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 1.6rem;}

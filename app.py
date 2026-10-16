@@ -7,7 +7,9 @@ from pathlib import Path
 
 import streamlit as st
 
-from rag import DEFAULT_DATA, DEFAULT_MODEL, Generator, Retriever, environment, export_csv, load_data, run_query
+from rag import DEFAULT_MODEL, Generator, environment, export_csv, run_query
+from knowledge import CORPUS, load_knowledge, signature
+from retrievers import LABELS, create_retriever
 
 OFFICIAL_GUIDE = "https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html"
 REPOSITORY = "https://github.com/Deng0430/simple-rag-amd"
@@ -38,8 +40,13 @@ st.html(f"<style>{(Path(__file__).parent / 'assets/style.css').read_text(encodin
 @st.cache_resource
 def resources(data_revision):
     # A data update must invalidate the cached index on the next page interaction.
-    data = load_data()
-    return data, Retriever(data["passages"], **data.get("retriever", {}))
+    return load_knowledge()
+
+
+@st.cache_resource(max_entries=6)
+def retrieval_resource(data_revision, method, min_score):
+    data = resources(data_revision)
+    return create_retriever(data["passages"], method, min_score=min_score)
 
 
 @st.cache_resource(max_entries=1)
@@ -86,7 +93,8 @@ def show_examples(questions):
 
 def show_result(result, *, paired=False):
     if paired:
-        st.markdown(f"### 最多检索 {result['top_k']} 条")
+        st.markdown(f"### {LABELS[result['retriever']].split(' · ')[0]}")
+    st.caption(f"{LABELS[result['retriever']]} / Top-k {result['top_k']} / 检索 {result['retrieval_seconds']:.3f} s")
     if result["notice"]:
         st.warning(result["notice"])
         st.link_button("查阅 AUP 官方指南", OFFICIAL_GUIDE, icon=":material/open_in_new:")
@@ -96,25 +104,32 @@ def show_result(result, *, paired=False):
             st.markdown(result["answer"])
             st.caption("建议依据下方指南整理，可按 [P1] 等编号核对出处。")
     if result["passages"]:
-        st.markdown(f"### 相关指南（{result['retrieved_count']} 条）")
+        st.markdown(f"### 相关资料（{result['retrieved_count']} 段）")
         if result["mode"] == "retrieval_preview":
-            st.caption("以下为指南原文。当前使用检索预览，尚未生成模型回答。")
+            st.caption("以下是检索到的资料片段。分数不是正确率，不同检索器的数值不可直接比较。")
         for number, passage in enumerate(result["passages"], 1):
+            st.caption(f"排名 {number} / {result['score_kind']} {passage['score']:.4f}")
             with st.expander(f"[P{number}] {passage['title']}",
-                             expanded=number == 1 and result["mode"] == "retrieval_preview"):
+                             expanded=number == 1 and result["mode"] == "retrieval_preview" and not paired):
                 show_passage(passage)
     with st.expander("运行记录与核对", icon=":material/analytics:"):
         a, b, c = st.columns(3)
         a.metric("总耗时", f"{result['total_seconds']:.3f} s")
         b.metric("输入 token", result["input_tokens"] if result["input_tokens"] is not None else "—")
         c.metric("输出 token", result["output_tokens"] if result["output_tokens"] is not None else "—")
+        st.caption(f"分数门槛：{result['min_score']}；索引准备耗时：{result.get('index_seconds', 0) or 0:.3f} s（首次准备可能包括下载与编码）")
+        if result.get("retriever_model"):
+            st.caption("嵌入模型：" + result["retriever_model"] + " / CPU ONNX")
+            st.caption(f"向量索引：{result['indexed_passages']} × {result['index_dimensions']}；"
+                       + ("复用磁盘缓存" if result["index_cache_hit"] else "本次完成文档编码并保存缓存"))
         if result.get("reference_answers"):
             st.write("核对要点：" + result["reference_answers"])
             st.caption("参考指南已检索到" if result["reference_passage_retrieved"] else "未检索到参考指南")
         st.caption("计时不含首次下载、加载、预热和网页渲染。仅检索时不生成答案、不计模型 token。")
 
 
-data, retriever = resources(DEFAULT_DATA.stat().st_mtime_ns)
+data_revision = signature()
+data = resources(data_revision)
 env = runtime_info()
 gpu_available = bool(env.get("gpu"))
 st.session_state.setdefault("question", "")
@@ -145,10 +160,26 @@ with st.sidebar:
                                  disabled=mode == "仅检索预览", on_change=reset_results)
         st.json(env)
     with st.expander("演示参数", icon=":material/tune:"):
-        k = st.select_slider("最多检索几条指南", options=[3, 6], value=3)
-        paired = st.checkbox("同时比较最多 3 条与 6 条指南", value=False)
-        st.caption("只选足够相关的指南，实际数量可能更少。对比用于观察回答和运行开销。")
-    st.html(f'<div class="sidebar-footnote">收录 {len(data["passages"])} 条指南<br>资料核对日期：{escape(data["updated"])}</div>')
+        method = st.selectbox("检索器", list(LABELS), format_func=LABELS.get, key="retriever-method", on_change=reset_results)
+        k = st.select_slider("Top-k：最多检索片段数", options=[1, 3, 6, 10], value=3, on_change=reset_results)
+        comparison = st.selectbox("对比方式", ["单次检索", "对比三种检索器（只检索）", "对比 Top-k 3 / 6"], key="comparison", on_change=reset_results)
+        compare_retrievers = comparison == "对比三种检索器（只检索）"
+        paired = comparison == "对比 Top-k 3 / 6"
+        defaults = {"tfidf": 0.04, "bm25": 0.0, "dense": 0.0}
+        min_score = st.number_input("最低分筛选门槛", min_value=0.0, value=defaults[method], step=0.01,
+                                    key="threshold-" + method, disabled=compare_retrievers, on_change=reset_results)
+        st.caption("三种检索器分别使用默认门槛。E5 默认保留 Top-k；语义分数尚未校准，需核对原文。首次使用会下载并编码文档。" if compare_retrievers or method == "dense" else "低于门槛的片段会被过滤。不同算法的分数不在同一个尺度。")
+    st.html(f'<div class="sidebar-footnote">{len(data["documents"])} 页官方文档＋本项目说明<br>共 {len(data["passages"])} 个片段 / {escape(data["updated"])}</div>')
+    if not data["complete_aup"]:
+        st.warning("官方文档尚未完整准备，当前只使用已导入的资料。")
+        if st.button("准备官方文档库", use_container_width=True):
+            try:
+                from prepare_knowledge import prepare
+                with st.spinner("下载清单中的官方文档并切分…"):
+                    prepare()
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
     st.link_button("AUP 官方使用指南", OFFICIAL_GUIDE, icon=":material/open_in_new:", use_container_width=True)
 
 badge = "检索预览" if mode == "仅检索预览" else ("GPU 模型问答" if gpu_available else "模型问答 · 需要 GPU")
@@ -156,7 +187,7 @@ st.html(f'<div class="page-meta"><span class="page-meta-label">AMD AUP Learning 
         f'<span class="mode-badge">{icon("search" if mode == "仅检索预览" else "cloud", 15)}{badge}</span></div>')
 st.html('<h1>云端开发，下一步怎么做？</h1><p class="page-intro">从配置 Python 到打开网页，描述你遇到的问题，找到操作指南和回答依据。</p>')
 
-ask_tab, guides_tab = st.tabs(["问题解答", f"指南库 · {len(data['passages'])}"])
+ask_tab, guides_tab = st.tabs(["问题解答", f"资料库 · {len(data['passages'])} 段"])
 with ask_tab:
     with st.container(key="question-panel"):
         st.html(f'<div class="question-title">{icon("terminal", 22)}<h2>你遇到了什么问题？</h2></div>')
@@ -165,41 +196,45 @@ with ask_tab:
                                     placeholder="粘贴报错，或描述你卡住的步骤。\n例如：Streamlit 已经启动，为什么浏览器打不开？")
             hint_column, action_column = st.columns([1.5, 1], vertical_alignment="center")
             with hint_column:
-                hint = "直接查阅原文，附来源链接" if mode == "仅检索预览" else "首次问答需要加载模型，请稍候"
+                hint = "同一问题、同一资料库，只比较检索结果" if compare_retrievers else ("直接查阅原文，附来源链接" if mode == "仅检索预览" else "首次问答需要加载模型，请稍候")
                 st.html(f'<div class="question-hint">{hint}</div>')
             with action_column:
                 single = st.form_submit_button(
-                    "获取操作建议" if mode == "模型问答" else "查找相关指南",
+                    "比较检索效果" if compare_retrievers else ("获取操作建议" if mode == "模型问答" else "查找相关资料"),
                     type="primary", icon=":material/search:", use_container_width=True,
-                    disabled=mode == "模型问答" and not gpu_available,
+                    disabled=mode == "模型问答" and not gpu_available and not compare_retrievers,
                 )
 
     if single:
         reset_results()
         if not question.strip():
             st.warning("请先输入问题，也可以点击下方常见问题填入。")
-        elif mode == "模型问答" and not model_id.strip():
+        elif mode == "模型问答" and not model_id.strip() and not compare_retrievers:
             st.warning("请在侧栏的“模型与运行环境”中填写模型名称。")
         else:
             try:
                 generator = None
-                if mode == "模型问答" and retriever.search(question, k):
+                methods = list(LABELS) if compare_retrievers else [method]
+                active_retrievers = {}
+                for current_method in methods:
+                    with st.spinner(f"准备 {LABELS[current_method]}，首次可能下载模型和构建索引…"):
+                        active_retrievers[current_method] = retrieval_resource(
+                            data_revision, current_method, None if compare_retrievers else min_score)
+                retriever = active_retrievers[method] if not compare_retrievers else None
+                if mode == "模型问答" and not compare_retrievers and retriever.search(question, k):
                     with st.spinner("正在加载并预热模型，首次运行需要一些时间…"):
                         generator = model_resource(model_id.strip())
                 with st.spinner("正在查阅指南…"):
                     results = []
                     selected = next((q for q in data["questions"] if q["question"] == question.strip()), None)
-                    for top_k in ([3, 6] if paired else [k]):
-                        result = run_query(retriever, question, top_k, generator,
+                    combinations = [(name, size) for name in methods for size in ([3, 6] if paired else [k])]
+                    for current_method, top_k in combinations:
+                        result = run_query(active_retrievers[current_method], question, top_k, generator,
                                            profile=data["prompt_profile"], max_new_tokens=data["max_new_tokens"],
                                            knowledge_base=data["id"])
                         result["recorded_at"] = datetime.now(timezone.utc).isoformat()
                         if selected:
                             result["question_id"] = selected["id"]
-                            result["reference_answers"] = " | ".join(selected["answers"])
-                            result["reference_passage_retrieved"] = any(
-                                p["id"] == selected["passage_id"] for p in result["passages"]
-                            )
                         results.append(result)
                     st.session_state["results"] = results
             except Exception as exc:
@@ -212,7 +247,7 @@ with ask_tab:
     if not results:
         st.html('<div class="suggestions-label">也可以从常见问题开始，点击填入</div>')
         show_examples(home_examples)
-        st.html(f'<div class="empty-help">{icon("book", 20)}<span>先查指南，再看出处。<br>每条指南都附适用范围，可随时在“指南库”中阅读。</span></div>')
+        st.html(f'<div class="empty-help">{icon("book", 20)}<span>先查资料，再看出处。<br>在“演示参数”切换检索器，在“资料库”阅读原文片段。</span></div>')
     else:
         with st.expander("换个常见问题", icon=":material/chat_bubble_outline:"):
             show_examples(home_examples)
@@ -227,8 +262,11 @@ with ask_tab:
                                mime="text/csv", icon=":material/download:")
 
 with guides_tab:
-    st.html('<div class="library-heading"><h2>按主题查阅指南</h2></div>')
-    st.caption("根据官方文档与本项目部署记录整理，可直接阅读，也可通过提问查找。")
+    st.html('<div class="library-heading"><h2>官方原文与项目说明</h2></div>')
+    st.caption(f"已导入 {len(data['documents'])} 页官方文档；AUP 用户指南{'已完整导入' if data['complete_aup'] else '尚未完整导入'}。原文按章节切分，旧版 40 条 FAQ 不参与检索。")
+    if data["failures"]:
+        with st.expander("未成功导入的页面"):
+            st.json(data["failures"])
     guide_search = st.text_input("搜索指南", placeholder="输入标题、报错或关键词，例如：端口占用、git pull、模型缓存", key="guide-search")
     categories = list(dict.fromkeys(p["category"] for p in data["passages"]))
     category = st.pills("筛选指南主题", ["全部"] + categories, default="全部", key="guide-category",
@@ -238,11 +276,13 @@ with guides_tab:
                 if (category == "全部" or p["category"] == category)
                 and all(term in (p["title"] + " " + p["keywords"] + " " + p["text"]).casefold()
                         for term in terms)]
-    st.html(f'<div class="library-count">{escape(category)} / {len(passages)} 条指南</div>')
+    page_count = max(1, (len(passages) + 19) // 20)
+    page = st.selectbox("资料列表页码", range(1, page_count + 1), format_func=lambda n: f"第 {n} / {page_count} 页", key=f"library-page-{category}-{guide_search}")
+    st.html(f'<div class="library-count">{escape(category)} / {len(passages)} 个片段，每页 20 个</div>')
     if not passages:
         st.info("没有符合条件的指南。试试其他关键词，或将主题切换为“全部”。")
     with st.container(key="guide-index"):
-        for passage in passages:
+        for passage in passages[(page - 1) * 20:page * 20]:
             with st.expander(passage["title"]):
                 st.caption(passage["category"])
                 show_passage(passage)
