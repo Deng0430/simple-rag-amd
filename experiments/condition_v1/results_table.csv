@@ -1,0 +1,4 @@
+﻿group,n,em,answer_token_f1,ai_assisted_slot_f1,tp,fp,fn,ai_acceptable_count,annotated_critical_error_count,mean_planned_input_tokens,completed_response_count,median_completed_request_seconds
+A,20,0.35,0.47282934062546306,0.42105263157894735,8,10,12,7,3,793.55,19,1.1767612000003282
+B,20,0.4,0.5644122261307624,0.45,9,11,11,8,4,932.15,20,1.3577033000001393
+C,20,0.35,0.4959421259694857,0.43902439024390244,9,12,11,8,4,931.45,20,1.366594999998597

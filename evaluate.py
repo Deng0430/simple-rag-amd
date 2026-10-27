@@ -4,14 +4,17 @@ import argparse
 import json
 from pathlib import Path
 
-from rag import DEFAULT_MODEL, Generator, environment, export_csv, load_data, run_query
+from rag import DEFAULT_OLLAMA_URL, create_generator, environment, export_csv, load_data, run_query
 from knowledge import load_knowledge
 from retrievers import create_retriever
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--backend", choices=["transformers", "ollama"], default="transformers")
+    parser.add_argument("--model", help="Defaults to Qwen3-4B for AUP or qwen2.5:3b for Ollama")
+    parser.add_argument("--base-url", default=DEFAULT_OLLAMA_URL, help="Ollama HTTP service")
+    parser.add_argument("--num-ctx", type=int, default=8192, help="Ollama context window")
     parser.add_argument("--data", help="Optional legacy JSON dataset; otherwise uses official documents")
     parser.add_argument("--retriever", choices=["tfidf", "bm25", "dense", "all"], default="tfidf")
     parser.add_argument("--top-k", type=int, nargs="+", default=[3],
@@ -22,6 +25,8 @@ def main():
     args = parser.parse_args()
     if args.limit < 1:
         parser.error("--limit must be positive")
+    if args.num_ctx < 1:
+        parser.error("--num-ctx must be positive")
     if any(k < 1 for k in args.top_k):
         parser.error("--top-k must be positive")
     if args.retriever == "all" and not args.preview:
@@ -32,11 +37,13 @@ def main():
                   analyzer=data.get("retriever", {}).get("analyzer", "word" if args.data else "char")) for name in methods}
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    generator = None if args.preview else Generator(args.model)
+    generator = None if args.preview else create_generator(
+        args.backend, args.model, base_url=args.base_url, num_ctx=args.num_ctx)
     output.with_suffix(".environment.json").write_text(
         json.dumps(dict(environment(), knowledge_base=data.get("id", "custom"),
                         data_file=Path(args.data).name if args.data else "official documents + project usage",
-                        retrievers=methods), ensure_ascii=False, indent=2),
+                        retrievers=methods,
+                        generator=generator.metadata() if generator else None), ensure_ascii=False, indent=2),
         encoding="utf-8", newline="\n",
     )
     results = []

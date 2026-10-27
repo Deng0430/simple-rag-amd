@@ -9,11 +9,16 @@ import json
 import platform
 import time
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 DEFAULT_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
+DEFAULT_LOCAL_MODEL = "qwen2.5:3b"
+DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_DATA = Path(__file__).parent / "data" / "archive" / "aup_faq_v2.json"
 NO_EVIDENCE = "现有指南中没有找到足够相关的材料。可以换一种问法，或查看 AUP 官方文档。"
 
@@ -120,6 +125,8 @@ def environment() -> dict:
 
 
 class Generator:
+    backend = "transformers"
+
     def __init__(self, model_id: str = DEFAULT_MODEL):
         try:
             import torch
@@ -139,6 +146,10 @@ class Generator:
         self._generate(
             [{"role": "user", "content": "Reply with OK."}], max_new_tokens=2
         )
+
+    def metadata(self) -> dict:
+        return {"backend": self.backend, "model": self.model_id,
+                "model_dtype": "float16", "decoding": "greedy"}
 
     def _generate(self, messages: list[dict], max_new_tokens: int) -> dict:
         torch = self.torch
@@ -180,8 +191,164 @@ class Generator:
         return self._generate(make_messages(question, passages, profile), max_new_tokens=max_new_tokens)
 
 
+def _ollama_url(base_url: str) -> str:
+    base_url = base_url.strip().rstrip("/")
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc or parsed.query or parsed.fragment:
+        raise ValueError("Ollama 地址应为完整的 HTTP 或 HTTPS 服务地址。")
+    return base_url
+
+
+def _ollama_request(base_url: str, path: str, payload: dict | None = None,
+                    *, timeout: float = 120) -> dict:
+    body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = Request(_ollama_url(base_url) + path, data=body,
+                      headers={"Content-Type": "application/json"},
+                      method="GET" if body is None else "POST")
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        detail = exc.read(4096).decode("utf-8", errors="replace")
+        raise RuntimeError(f"Ollama 请求失败（HTTP {exc.code}）：{detail}") from exc
+    except (URLError, TimeoutError, ConnectionError) as exc:
+        raise RuntimeError("无法连接 Ollama 或请求超时，请确认本地 Ollama 服务正在运行。") from exc
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Ollama 返回了无法解析的响应。") from exc
+    if not isinstance(result, dict):
+        raise RuntimeError("Ollama 返回了非对象响应。")
+    if result.get("error"):
+        raise RuntimeError(f"Ollama 请求失败：{result['error']}")
+    return result
+
+
+def ollama_status(base_url: str = DEFAULT_OLLAMA_URL) -> dict:
+    """Check installed models without loading a model or downloading anything."""
+    try:
+        result = _ollama_request(base_url, "/api/tags", timeout=2)
+        models = result.get("models")
+        if not isinstance(models, list) or any(
+                not isinstance(model, dict) or not isinstance(model.get("name"), str)
+                for model in models):
+            raise RuntimeError("Ollama 没有返回有效的已安装模型清单。")
+        return {"available": True, "models": models, "error": None}
+    except (RuntimeError, ValueError) as exc:
+        return {"available": False, "models": [], "error": str(exc)}
+
+
+class OllamaGenerator:
+    """Use an already-installed Ollama model; never pull or replace weights."""
+
+    backend = "ollama"
+
+    def __init__(self, model_id: str = DEFAULT_LOCAL_MODEL,
+                 base_url: str = DEFAULT_OLLAMA_URL, num_ctx: int = 8192):
+        if type(num_ctx) is not int or num_ctx < 1:
+            raise ValueError("num_ctx 必须为正整数。")
+        self.base_url = _ollama_url(base_url)
+        self.num_ctx = num_ctx
+        requested = model_id.strip()
+        if not requested:
+            raise ValueError("请填写已安装的 Ollama 模型名称。")
+        if ":" not in requested.rsplit("/", 1)[-1]:
+            requested += ":latest"
+        status = ollama_status(self.base_url)
+        if not status["available"]:
+            raise RuntimeError(status["error"])
+        installed = next((item for item in status["models"] if item["name"] == requested), None)
+        if installed is None:
+            raise RuntimeError(f"Ollama 中未找到已安装模型 {requested}；请核对 ollama list。本项目不会自动下载模型。")
+        if not installed.get("digest"):
+            raise RuntimeError("已安装模型缺少 digest，无法记录本次使用的权重版本。")
+        self.model_id = installed["name"]
+        self.model_digest = installed["digest"]
+        shown = _ollama_request(self.base_url, "/api/show", {"model": self.model_id}, timeout=10)
+        details = shown.get("details") or installed.get("details") or {}
+        self.quantization = details.get("quantization_level")
+        self.parameter_size = details.get("parameter_size")
+        self.version = _ollama_request(self.base_url, "/api/version", timeout=2).get("version")
+        # Loading and this warm-up happen before evaluate.py starts per-question timing.
+        self.warmup_seconds = None
+        started = time.perf_counter()
+        self._generate([{"role": "user", "content": "Reply with OK."}],
+                       max_new_tokens=min(2, num_ctx))
+        self.warmup_seconds = time.perf_counter() - started
+
+    def metadata(self) -> dict:
+        return {
+            "backend": self.backend, "model": self.model_id,
+            "model_digest": self.model_digest, "model_quantization": self.quantization,
+            "model_parameter_size": self.parameter_size, "ollama_version": self.version,
+            "num_ctx": self.num_ctx, "temperature": 0, "seed": 42,
+            "base_url": self.base_url, "warmup_seconds": self.warmup_seconds,
+            "context_guard": "conservative_utf8_byte_upper_bound",
+        }
+
+    def _generate(self, messages: list[dict], max_new_tokens: int) -> dict:
+        if type(max_new_tokens) is not int or not 1 <= max_new_tokens <= self.num_ctx:
+            raise ValueError("max_new_tokens 必须为正整数且不能超过 num_ctx。")
+        # For Qwen's byte-level tokenizer, UTF-8 bytes overestimate content tokens.
+        # Reserve additional room for the chat template. Refuse conservatively:
+        # Ollama's chat API can otherwise truncate prompts without an error.
+        input_bound = 128 + sum(len(message["content"].encode("utf-8")) + 32
+                                for message in messages)
+        if input_bound + max_new_tokens > self.num_ctx:
+            raise ValueError(
+                f"输入的保守长度上界加输出预算为 {input_bound + max_new_tokens}，"
+                f"超过 Ollama num_ctx={self.num_ctx}。请减少 Top-k/缩短问题，或显式增大上下文；"
+                "此检查按 UTF-8 字节估算，可能高估中文 token 数，未自动截断资料。"
+            )
+        started = time.perf_counter()
+        response = _ollama_request(self.base_url, "/api/chat", {
+            "model": self.model_id, "messages": messages, "stream": False,
+            "keep_alive": "10m",
+            "options": {"temperature": 0, "seed": 42, "num_ctx": self.num_ctx,
+                        "num_predict": max_new_tokens},
+        })
+        elapsed = time.perf_counter() - started
+        if response.get("done") is not True:
+            raise RuntimeError("Ollama 生成尚未完成，未将本次响应记为成功回答。")
+        message = response.get("message")
+        if not isinstance(message, dict) or not isinstance(message.get("content"), str) or not message["content"].strip():
+            raise RuntimeError("Ollama 没有返回有效的回答正文。")
+        for name in ("prompt_eval_count", "eval_count"):
+            if type(response.get(name)) is not int or response[name] < 0:
+                raise RuntimeError(f"Ollama 响应缺少有效的实际 token 计数：{name}。")
+        if response["prompt_eval_count"] + max_new_tokens > self.num_ctx:
+            raise RuntimeError("实际输入 token 与输出预算超过 num_ctx，未将可能截断的本次响应记为成功回答。")
+        durations = {}
+        for source, target in (("total_duration", "server_total_seconds"),
+                               ("load_duration", "load_seconds"),
+                               ("prompt_eval_duration", "server_prompt_eval_seconds"),
+                               ("eval_duration", "server_eval_seconds")):
+            value = response.get(source)
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+                raise RuntimeError(f"Ollama 响应缺少有效的计时字段：{source}。")
+            durations[target] = value / 1e9
+        return dict(
+            self.metadata(), **durations,
+            answer=message["content"].strip(), input_tokens=response["prompt_eval_count"],
+            output_tokens=response["eval_count"], generation_seconds=elapsed,
+            torch_peak_allocated_gib=None, done_reason=response.get("done_reason"),
+            output_truncated=response.get("done_reason") == "length",
+        )
+
+    def answer(self, question: str, passages: list[dict], *, profile: str = "general",
+               max_new_tokens: int = 128) -> dict:
+        return self._generate(make_messages(question, passages, profile), max_new_tokens)
+
+
+def create_generator(backend: str = "transformers", model_id: str | None = None,
+                     base_url: str = DEFAULT_OLLAMA_URL, num_ctx: int = 8192):
+    if backend == "transformers":
+        return Generator(model_id or DEFAULT_MODEL)
+    if backend == "ollama":
+        return OllamaGenerator(model_id or DEFAULT_LOCAL_MODEL, base_url, num_ctx)
+    raise ValueError(f"不支持的生成后端：{backend}")
+
+
 def run_query(retriever: Retriever, question: str, k: int,
-              generator: Generator | None = None, *, profile: str = "general",
+              generator: Generator | OllamaGenerator | None = None, *, profile: str = "general",
               max_new_tokens: int = 128, knowledge_base: str = "unspecified") -> dict:
     started = time.perf_counter()
     passages = retriever.search(question, k)
@@ -207,6 +374,11 @@ def run_query(retriever: Retriever, question: str, k: int,
         "status": "matched" if passages else "no_evidence",
         "notice": "" if passages else NO_EVIDENCE,
     }
+    metadata = getattr(generator, "metadata", None)
+    if callable(metadata):
+        values = metadata()
+        if isinstance(values, dict):
+            result.update(values)
     if generator is not None and passages:
         result.update(generator.answer(question, passages, profile=profile,
                                        max_new_tokens=max_new_tokens))

@@ -1,0 +1,139 @@
+{
+  "export_version": 1,
+  "source_run": "runs/retrieval_eval_v2/2026-10-27_holdout_v2_reset",
+  "split": "holdout",
+  "prepared_at": "2026-10-27T12:29:42.725130+08:00",
+  "question_count": 12,
+  "logical_positions": 36,
+  "actual_attempts": 35,
+  "reused_positions": 1,
+  "model": {
+    "backend": "ollama",
+    "model": "qwen2.5:3b",
+    "model_digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+    "details": {
+      "parent_model": "",
+      "format": "gguf",
+      "family": "qwen2",
+      "families": [
+        "qwen2"
+      ],
+      "parameter_size": "3.1B",
+      "quantization_level": "Q4_K_M"
+    },
+    "ollama_version": "0.40.11",
+    "num_ctx": 8192,
+    "temperature": 0,
+    "seed": 42,
+    "prompt_mode": "api/generate raw=True, explicit ChatML, fixed JSON schema",
+    "tokenizer": {
+      "repository": "Qwen/Qwen2.5-3B-Instruct",
+      "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "files": {
+        "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "tokenizer_config.json": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583"
+      },
+      "prompt_mode": "explicit_chatml_api_generate_raw"
+    },
+    "ollama_default_template_sha256": "eb4402837c7829a690fa845de4d7f3fd842c2adee476d5341da8a46ea9255175",
+    "request_isolation": "unload qwen2.5:3b before each unique generation, same weights/prompt/schema/options"
+  },
+  "protocol": {
+    "version": "retrieval-v2",
+    "groups": [
+      "D",
+      "H",
+      "X"
+    ],
+    "seed": 42,
+    "max_new_tokens": 512,
+    "num_ctx": 8192,
+    "extension_budget": 512,
+    "deduplicate_identical_prompts_within_task": true,
+    "runtime_retries": 1,
+    "no_semantic_or_format_retries": true,
+    "old_tasks_are_exposed_regression": true,
+    "new_tasks_are_exploratory": true,
+    "review_type": "ai_assisted",
+    "human_review_completed": false
+  },
+  "retrieval": {
+    "rule_version": "dense-bm25-rrf-global-v2",
+    "dense_model": "intfloat/multilingual-e5-small",
+    "dense_artifact": {
+      "repository": "Xenova/multilingual-e5-small",
+      "revision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+      "files": [
+        {
+          "path": "config.json",
+          "size": 658,
+          "sha256": "cb99455288675345e1a4f411438d5d0adbba5fbd3a67ea4fb03c015433b996c1"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 17082730,
+          "sha256": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 443,
+          "sha256": "a1d6bc8734a6f635dc158508bef000f8e2e5a759c7d92f984b2c86e5ff53425b"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 167,
+          "sha256": "d05497f1da52c5e09554c0cd874037a083e1dc1b9cfd48034d1c717f1afc07a7"
+        },
+        {
+          "path": "onnx/model_quantized.onnx",
+          "size": 118308185,
+          "sha256": "f80102d3f2a1229f387d3c81909990d8945513e347b0eab049f7de3c6f98c193"
+        }
+      ]
+    },
+    "bm25_parameters": {
+      "k1": 1.5,
+      "b": 0.75,
+      "tokenizer": "retrievers.tokenize"
+    },
+    "branch_top_k": 20,
+    "seed_top_k": 3,
+    "rrf_k": 60,
+    "rrf_weights": {
+      "dense": 1.0,
+      "bm25": 1.0
+    },
+    "tie_break": "original corpus order"
+  },
+  "corpus_sha256": "14b90cbbafc7940105331a8a92e276edf23bc77bad7796c9227a293e837a11b7",
+  "frozen_scoring_source_sha256": "f50561579e1cdc0ae976c4ba1f2253b2e118fe2d53240ade8e0106829b5a55dc",
+  "frozen_scoring_source_lf_sha256": "f50561579e1cdc0ae976c4ba1f2253b2e118fe2d53240ade8e0106829b5a55dc",
+  "source_file_sha256": {
+    "manifest.json": "e2db322c46d8c5e6e6357d5868929edc118539354be3fdc5167a3c8fc43b6c50",
+    "summary.json": "d969f972e1d61d62de6713268e71b3771fbd4195a403ce402cce2b96c8c360c3",
+    "predictions.jsonl": "01c1fd0b61e2ca0acf8ec0339c30dd2920cbfc0889b8b5ac064c7e58de93d105",
+    "reviewed_answer_scores.csv": "aebaa4d41668ba157dc4715775c306bf8efc031da38908fd5e4ff331fdf6e714",
+    "automatic_scores.csv": "1eff9eaadd9f240ae82c89391d116bca8bb482d46d1710a6658469b8499a62e9",
+    "slot_review.json": "57e94da0767e0c6c702751921ee9a1fe90964ada45fa3f146ec4a6bcffc60770",
+    "review_key.json": "6fd4e510223539206d9a8fc3640e19ae30020edb734b48c78f850cc63723265b",
+    "questions.json": "3343b5d5521b65e2fd579a8e7e880e992490ab638c03af496dbdd697ee4227ba",
+    "gold.json": "0dc672484408258c2123c020d21a2b51fa51b9991e4bada984827806e0c86cfa",
+    "corpus.json": "14b90cbbafc7940105331a8a92e276edf23bc77bad7796c9227a293e837a11b7",
+    "inputs.jsonl": "8810f1cd75b01f0bbf5fe8368cc4b63410115518ce225319ce10c21437f2a652",
+    "attempts.jsonl": "f6b6fcf10a90b9fa8291d346e926aca9613c90272348dea5fed771e3c0c92001",
+    "paired_differences.csv": "5eb60d1a8fe1de5f77fedf81324a67f27dc2c965ccf41d331c9861f83d865ec6",
+    "results_table.csv": "c57ed729739d812e16a4dfe6c71b9298e9a5054b22f38c148919314225b3acd0"
+  },
+  "human_review_completed": false,
+  "review_note": "Source-grounded AI-assisted gold and method-masked AI initial review with visible-group coordination; not independent human validation.",
+  "omitted": [
+    "full third-party documents",
+    "full prompts",
+    "source snapshots",
+    "host snapshots",
+    "service logs",
+    "model weights",
+    "unselected initial failed batches"
+  ],
+  "scope_note": "This bundle reproduces reported metric calculations, not exact historical retrieval or generation. Full local runs remain archived."
+}

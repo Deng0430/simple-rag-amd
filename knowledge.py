@@ -63,7 +63,7 @@ def project_passages():
                 scope="本仓库运行方式；平台资源状态仍以账号页面为准。",
                 sources=[dict(title="本项目使用说明 / " + title,
                               url="https://github.com/Deng0430/simple-rag-amd/blob/main/docs/project-usage.md",
-                              kind="项目说明", checked_on="2026-10-16")],
+                              kind="项目说明", checked_on="2026-10-27")],
             ))
     return passages
 

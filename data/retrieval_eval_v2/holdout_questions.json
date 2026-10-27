@@ -1,0 +1,111 @@
+{
+  "metadata": {
+    "dataset_version": "retrieval-eval-v2-holdout-1",
+    "created_on": "2026-10-27",
+    "role": "new_holdout",
+    "annotation_status": "AI-assisted source-grounded provisional gold; not independently human-validated",
+    "source_corpus": "runs/condition_eval/2026-10-27_test_v1/corpus.json",
+    "source_corpus_sha256": "14b90cbbafc7940105331a8a92e276edf23bc77bad7796c9227a293e837a11b7",
+    "selection": "12 new source-supported scenarios selected by document coverage and answer clarity, before any retrieval ranking or generator output; 3 per category",
+    "exclusions": "All 20 scenario_ids in condition_eval/test_questions.json and all 3 in condition_eval/development.json; no same-scenario paraphrases",
+    "gold_access": "Scoring-only: reference_answers, required_slots, allowed_extras, critical_errors, and relevant_evidence must never enter retrieval, packing, or generation.",
+    "construct": "One necessary operational condition or key constraint per question; behavior_explanation is explicitly distinguished from prerequisites.",
+    "slot_scoring_context": "Judge the full answer together with the question context. Do not require restating already-given context; correct commands and paths can implement constraints. Acceptable strings are semantic examples, not exhaustive keyword patterns.",
+    "prior_data_exposure": "Prior formal questions and the development JSON were read for exclusion; development reference fields were inadvertently visible because they share the same file. Old formal gold.json, predictions, result files, rankings, and generator outputs were not read for this dataset.",
+    "pre_freeze_revision": {
+      "date": "2026-10-27",
+      "changes": [
+        "Aligned holdout gold top-level records key to items, as required by condition_experiment.validate_gold.",
+        "Separated each single short-answer target from explanation; all substantive information needs remain before the literal 简短答案 retrieval suffix."
+      ],
+      "stage": "Pre-freeze, before any retrieval ranking or generator output; scenarios, reference answers, slots and evidence unchanged."
+    },
+    "output_contract": "short_answer contains only the requested single command/flag/path/expression/name; requested conditions belong in explanation. All substantive needs precede 简短答案."
+  },
+  "questions": [
+    {
+      "id": "rv2-01",
+      "scenario_id": "vscode-project-task-location",
+      "category": "路径与配置",
+      "question": "VS Code 中，要让自定义构建任务随单个课程工程保存，应写入工程下哪个相对路径？只打开一个源文件时，任务功能是否可用？简短答案只写相对路径，其余条件说明写入 explanation。",
+      "answer_type": "path"
+    },
+    {
+      "id": "rv2-02",
+      "scenario_id": "git-existing-destination-directory",
+      "category": "路径与配置",
+      "question": "要将 https://example.com/course.git 克隆到 /work/course，git 命令怎么写？如果目标目录已经存在，它必须满足什么条件？简短答案只写命令，其余条件说明写入 explanation。",
+      "answer_type": "command"
+    },
+    {
+      "id": "rv2-03",
+      "scenario_id": "hf-local-download-metadata-cleanup",
+      "category": "路径与配置",
+      "question": "使用 Hugging Face 下载函数把 local_dir 设为 /work/models 后，下载元数据会放在哪个子目录？下载完成后删除这个元数据目录，会连同已下载的业务文件一起删除吗？简短答案只写完整路径，其余条件说明写入 explanation。",
+      "answer_type": "path"
+    },
+    {
+      "id": "rv2-04",
+      "scenario_id": "python-interpreter-environment-detection",
+      "category": "Python与pip",
+      "question": "Python 脚本要判断当前解释器是否处于虚拟环境，文档给出的前缀比较表达式是什么？能否只凭 VIRTUAL_ENV 是否存在来判断？简短答案只写比较表达式，其余条件说明写入 explanation。",
+      "answer_type": "text"
+    },
+    {
+      "id": "rv2-05",
+      "scenario_id": "pip-global-package-version-limits",
+      "category": "Python与pip",
+      "question": "安装应用时，希望用 caps.txt 统一限制依赖版本，pip install 应增加什么参数？如果某个包只写在这个文件中，是否会因此自动安装？简短答案只写参数，其余条件说明写入 explanation。",
+      "answer_type": "command"
+    },
+    {
+      "id": "rv2-06",
+      "scenario_id": "pip-package-specific-stable-release-policy",
+      "category": "Python与pip",
+      "question": "安装 SomePackage 时，要显式禁止为 DependencyPackage 选择预发布版本，而其他包沿用原策略，应给 pip install 加什么参数？依据语料，这个选项从哪个 pip 版本加入？简短答案只写参数，其余条件说明写入 explanation。",
+      "answer_type": "command"
+    },
+    {
+      "id": "rv2-07",
+      "scenario_id": "git-clone-release-tag-checkout",
+      "category": "Git与HF选项",
+      "question": "用普通的非裸 git clone 直接检出仓库里已有的 v2.1 标签，应添加哪个参数？克隆后的 HEAD 处于什么状态？简短答案只写参数，其余条件说明写入 explanation。",
+      "answer_type": "command"
+    },
+    {
+      "id": "rv2-08",
+      "scenario_id": "git-pull-fast-forward-only-update",
+      "category": "Git与HF选项",
+      "question": "git pull 时只允许快进更新，应显式添加哪个选项？若本地和远程分支已经分叉，这次操作会怎样？简短答案只写选项，其余条件说明写入 explanation。",
+      "answer_type": "command"
+    },
+    {
+      "id": "rv2-09",
+      "scenario_id": "hf-snapshot-json-file-selection",
+      "category": "Git与HF选项",
+      "question": "调用 snapshot_download 时只想下载文件名匹配 *.json 的文件，应设置哪个参数及其值？这个匹配规则按正则表达式还是哪种模式解释？简短答案只写参数赋值，其余条件说明写入 explanation。",
+      "answer_type": "command"
+    },
+    {
+      "id": "rv2-10",
+      "scenario_id": "aup-remote-server-explicit-stop",
+      "category": "云端服务与运行",
+      "question": "AUP 上的工作已经保存，要结束远程服务器并释放共享资源，应在 JupyterHub 控制页点击哪个按钮？关闭浏览器标签页前还应确认什么状态？简短答案只写按钮名，其余条件说明写入 explanation。",
+      "answer_type": "text"
+    },
+    {
+      "id": "rv2-11",
+      "scenario_id": "streamlit-origin-allowlist-activation",
+      "category": "云端服务与运行",
+      "question": "部署 Streamlit 时，要用名单指定允许访问的来源，应在哪个完整配置键中填写来源列表？这个名单生效还要求哪个保护开关开启？简短答案只写完整配置键，其余条件说明写入 explanation。",
+      "answer_type": "text"
+    },
+    {
+      "id": "rv2-12",
+      "scenario_id": "hf-file-transfer-timeout-failure",
+      "category": "云端服务与运行",
+      "question": "网络较慢，想把 huggingface_hub 下载文件时等待服务器响应的超时设为 60 秒，应设置哪个环境变量？若仍然超时，文档规定会抛出什么异常？简短答案只写环境变量赋值，其余条件说明写入 explanation。",
+      "answer_type": "command"
+    }
+  ]
+}

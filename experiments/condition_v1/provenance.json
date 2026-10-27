@@ -1,0 +1,97 @@
+{
+  "export_version": 1,
+  "source_run": "runs/condition_eval/2026-10-27_test_v1",
+  "split": "test",
+  "prepared_at": "2026-10-27T11:57:17.144264+08:00",
+  "question_count": 20,
+  "logical_positions": 60,
+  "actual_attempts": 61,
+  "reused_positions": 0,
+  "model": {
+    "backend": "ollama",
+    "model": "qwen2.5:3b",
+    "model_digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+    "details": {
+      "parent_model": "",
+      "format": "gguf",
+      "family": "qwen2",
+      "families": [
+        "qwen2"
+      ],
+      "parameter_size": "3.1B",
+      "quantization_level": "Q4_K_M"
+    },
+    "ollama_version": "0.40.11",
+    "num_ctx": 8192,
+    "temperature": 0,
+    "seed": 42,
+    "prompt_mode": "api/generate raw=True, explicit ChatML, fixed JSON schema",
+    "tokenizer": {
+      "repository": "Qwen/Qwen2.5-3B-Instruct",
+      "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "files": {
+        "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "tokenizer_config.json": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583"
+      },
+      "prompt_mode": "explicit_chatml_api_generate_raw"
+    },
+    "ollama_default_template_sha256": "eb4402837c7829a690fa845de4d7f3fd842c2adee476d5341da8a46ea9255175"
+  },
+  "protocol": {
+    "top_k": 3,
+    "extension_budget_tokens": 512,
+    "max_new_tokens": 512,
+    "retrieval_query_rule": "question before the first 简短答案; full original question retained for generation",
+    "rule_version": "condition-neighbors-v1",
+    "run_order_seed": 42,
+    "review_type": "ai_assisted",
+    "human_review_completed": false,
+    "annotation_note": "Source-grounded AI-assisted gold and group-masked AI review; not human labels.",
+    "long_code_note": "Original corpus chunks are preserved, including previously split long source blocks; no new splitting.",
+    "potential_split_code_context_ids": [
+      "doc-03cf48517e29",
+      "doc-17b4d5a2cf9b",
+      "doc-52d2a97a429e",
+      "doc-7310af941c58",
+      "doc-80ec1b1c2a7a",
+      "doc-a1ae580bf5c8",
+      "doc-fb7bccb1a7ed"
+    ]
+  },
+  "retrieval": {
+    "model": "intfloat/multilingual-e5-small",
+    "revision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+    "corpus_passages": 716
+  },
+  "corpus_sha256": "14b90cbbafc7940105331a8a92e276edf23bc77bad7796c9227a293e837a11b7",
+  "frozen_scoring_source_sha256": "f50561579e1cdc0ae976c4ba1f2253b2e118fe2d53240ade8e0106829b5a55dc",
+  "frozen_scoring_source_lf_sha256": "f50561579e1cdc0ae976c4ba1f2253b2e118fe2d53240ade8e0106829b5a55dc",
+  "source_file_sha256": {
+    "manifest.json": "547b85eb7c2017db4ce96170c3125b4af7a6c87463cb708121c9d1b7df0cdd3e",
+    "summary.json": "ef3665cbba95fb1de4eeb00add0b30229cc368c9c4993bb08743700a3a160546",
+    "predictions.jsonl": "6bc5ee34ff2edb9b3c5b37edb94daadd9202f49c85394a051678659dea2b4f00",
+    "reviewed_answer_scores.csv": "7cf5a364c0614e126697a717875485ba12edc8011bc8f590eea25d424b956012",
+    "automatic_scores.csv": "9809f4fa0ebc1dc7e0b3d96cffe1ec5e10cb7c93a86ac8471a2b8d4570f572b8",
+    "slot_review.json": "1556f00f1e4ed5d0c28691658113cb48595a111cc375e7e12cb4a70afa236448",
+    "review_key.json": "a19d43e6e387f001b3cbd2ab8d9d1a668bd0164c3f4fdb0555b80f58f40bc322",
+    "questions.json": "de1feb8d8be50cf5b91b99dd0b93189b0a0a710c27b9a61e487670b16ed332e0",
+    "gold.json": "c956f282bde12d6a220f9e965d84381796207ae40b8af89fe02b856051835b61",
+    "corpus.json": "14b90cbbafc7940105331a8a92e276edf23bc77bad7796c9227a293e837a11b7",
+    "inputs.jsonl": "4e36af196d9807109086035c3bfaaee0126887f23e88978cd74fcaf6512743c4",
+    "attempts.jsonl": "067bb0f99028ff470fd37b4a30efab107377a4485271829838e6e2555130693c",
+    "paired_differences.csv": "623e06d93e168760644b5a3acfdd7d3cc0b41fc4520408ba4f43c90745b0c393",
+    "results_table.csv": "4122af05b23bd0ea4c77827f4d82bda094b441ca1c46d13bf98b99cde17fe7fd"
+  },
+  "human_review_completed": false,
+  "review_note": "Source-grounded AI-assisted gold and method-masked AI initial review with visible-group coordination; not independent human validation.",
+  "omitted": [
+    "full third-party documents",
+    "full prompts",
+    "source snapshots",
+    "host snapshots",
+    "service logs",
+    "model weights",
+    "unselected initial failed batches"
+  ],
+  "scope_note": "This bundle reproduces reported metric calculations, not exact historical retrieval or generation. Full local runs remain archived."
+}

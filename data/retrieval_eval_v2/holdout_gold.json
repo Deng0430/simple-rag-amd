@@ -1,0 +1,590 @@
+{
+  "metadata": {
+    "dataset_version": "retrieval-eval-v2-holdout-1",
+    "created_on": "2026-10-27",
+    "role": "new_holdout",
+    "annotation_status": "AI-assisted source-grounded provisional gold; not independently human-validated",
+    "source_corpus": "runs/condition_eval/2026-10-27_test_v1/corpus.json",
+    "source_corpus_sha256": "14b90cbbafc7940105331a8a92e276edf23bc77bad7796c9227a293e837a11b7",
+    "selection": "12 new source-supported scenarios selected by document coverage and answer clarity, before any retrieval ranking or generator output; 3 per category",
+    "exclusions": "All 20 scenario_ids in condition_eval/test_questions.json and all 3 in condition_eval/development.json; no same-scenario paraphrases",
+    "gold_access": "Scoring-only: reference_answers, required_slots, allowed_extras, critical_errors, and relevant_evidence must never enter retrieval, packing, or generation.",
+    "construct": "One necessary operational condition or key constraint per question; behavior_explanation is explicitly distinguished from prerequisites.",
+    "slot_scoring_context": "Judge the full answer together with the question context. Do not require restating already-given context; correct commands and paths can implement constraints. Acceptable strings are semantic examples, not exhaustive keyword patterns.",
+    "prior_data_exposure": "Prior formal questions and the development JSON were read for exclusion; development reference fields were inadvertently visible because they share the same file. Old formal gold.json, predictions, result files, rankings, and generator outputs were not read for this dataset.",
+    "pre_freeze_revision": {
+      "date": "2026-10-27",
+      "changes": [
+        "Aligned holdout gold top-level records key to items, as required by condition_experiment.validate_gold.",
+        "Separated each single short-answer target from explanation; all substantive information needs remain before the literal 简短答案 retrieval suffix."
+      ],
+      "stage": "Pre-freeze, before any retrieval ranking or generator output; scenarios, reference answers, slots and evidence unchanged."
+    },
+    "output_contract": "short_answer contains only the requested single command/flag/path/expression/name; requested conditions belong in explanation. All substantive needs precede 简短答案."
+  },
+  "items": [
+    {
+      "id": "rv2-01",
+      "scenario_id": "vscode-project-task-location",
+      "category": "路径与配置",
+      "question": "VS Code 中，要让自定义构建任务随单个课程工程保存，应写入工程下哪个相对路径？只打开一个源文件时，任务功能是否可用？简短答案只写相对路径，其余条件说明写入 explanation。",
+      "answer_type": "path",
+      "reference_answers": [
+        ".vscode/tasks.json",
+        "./.vscode/tasks.json",
+        ".vscode\\tasks.json"
+      ],
+      "required_slots": [
+        {
+          "id": "workspace_folder_required",
+          "description": "任务支持要求打开工作区文件夹；仅编辑单个文件不提供任务支持。",
+          "acceptable": [
+            "需要打开工作区文件夹，单文件编辑不支持任务",
+            "打开工程文件夹后才可使用任务"
+          ],
+          "evidence_ids": [
+            "doc-b1b7d6895751"
+          ],
+          "slot_type": "prerequisite"
+        }
+      ],
+      "allowed_extras": [
+        "可补充通过 Terminal 菜单的 Configure Tasks 创建配置。"
+      ],
+      "critical_errors": [
+        "声称只打开单个文件就能使用任务支持。",
+        "把工程任务配置写为 launch.json。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-dc86e73bf388",
+          "quote": "Workspace or folder specific tasks are configured from the tasks.json file in the .vscode folder for a workspace.",
+          "source_url": "https://code.visualstudio.com/docs/debugtest/tasks",
+          "source_title": "VS Code Tasks / Integrate with External Tools via Tasks"
+        },
+        {
+          "passage_id": "doc-b1b7d6895751",
+          "quote": "Note: Task support is only available when working on a workspace folder. It is not available when editing single files.",
+          "source_url": "https://code.visualstudio.com/docs/debugtest/tasks",
+          "source_title": "VS Code Tasks / Integrate with External Tools via Tasks"
+        }
+      ]
+    },
+    {
+      "id": "rv2-02",
+      "scenario_id": "git-existing-destination-directory",
+      "category": "路径与配置",
+      "question": "要将 https://example.com/course.git 克隆到 /work/course，git 命令怎么写？如果目标目录已经存在，它必须满足什么条件？简短答案只写命令，其余条件说明写入 explanation。",
+      "answer_type": "command",
+      "reference_answers": [
+        "git clone https://example.com/course.git /work/course",
+        "git clone \"https://example.com/course.git\" \"/work/course\""
+      ],
+      "required_slots": [
+        {
+          "id": "existing_target_empty",
+          "description": "git clone 允许使用已经存在的目标目录的前提是该目录为空。",
+          "acceptable": [
+            "已有目标目录必须为空",
+            "只有空目录可以作为已存在的克隆目标"
+          ],
+          "evidence_ids": [
+            "doc-1358caae651a"
+          ],
+          "slot_type": "prerequisite"
+        }
+      ],
+      "allowed_extras": [
+        "目标不存在时会创建该目录。"
+      ],
+      "critical_errors": [
+        "声称已有非空目录可直接用作该 clone 的目标。",
+        "建议为满足条件而无提示地删除已有目录内容。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-04596d98e0bf",
+          "quote": "[--filter=<filter-spec> [--also-filter-submodules]] [--] <repository>\n\t  [<directory>]",
+          "source_url": "https://git-scm.com/docs/git-clone#_synopsis",
+          "source_title": "Git clone / SYNOPSIS"
+        },
+        {
+          "passage_id": "doc-1358caae651a",
+          "quote": "Cloning into an existing directory\nis only allowed if the directory is empty.",
+          "source_url": "https://git-scm.com/docs/git-clone#_options",
+          "source_title": "Git clone / OPTIONS"
+        }
+      ]
+    },
+    {
+      "id": "rv2-03",
+      "scenario_id": "hf-local-download-metadata-cleanup",
+      "category": "路径与配置",
+      "question": "使用 Hugging Face 下载函数把 local_dir 设为 /work/models 后，下载元数据会放在哪个子目录？下载完成后删除这个元数据目录，会连同已下载的业务文件一起删除吗？简短答案只写完整路径，其余条件说明写入 explanation。",
+      "answer_type": "path",
+      "reference_answers": [
+        "/work/models/.cache/huggingface/",
+        "/work/models/.cache/huggingface"
+      ],
+      "required_slots": [
+        {
+          "id": "metadata_removal_preserves_data",
+          "description": "完成下载后移除该元数据目录不会删除或损坏已下载到本地的业务文件。",
+          "acceptable": [
+            "不会，已下载的本地数据仍保持完整",
+            "只删除元数据不会删除已下载的数据文件"
+          ],
+          "evidence_ids": [
+            "doc-9ffc9e30c2ca"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "元数据丢失后重新运行脚本可能需要更长恢复时间。",
+        "该目录自动被 git 和 upload_folder() 忽略。"
+      ],
+      "critical_errors": [
+        "声称删除该元数据目录会同时删除已下载的业务文件。",
+        "建议删除整个 /work/models 来清理元数据。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-9ffc9e30c2ca",
+          "quote": "A .cache/huggingface/ folder is created at the root of your local directory containing metadata about the downloaded files.",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/guides/download",
+          "source_title": "Hugging Face Hub Download files / Download file(s) to a local folder"
+        },
+        {
+          "passage_id": "doc-9ffc9e30c2ca",
+          "quote": "After completing the download, you can safely remove the .cache/huggingface/ folder if you no longer need it. However, be aware that re-running your script without this folder may result in longer recovery times, as metadata will be lost. Rest assured that your local data will remain intact and unaffected.",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/guides/download",
+          "source_title": "Hugging Face Hub Download files / Download file(s) to a local folder"
+        }
+      ]
+    },
+    {
+      "id": "rv2-04",
+      "scenario_id": "python-interpreter-environment-detection",
+      "category": "Python与pip",
+      "question": "Python 脚本要判断当前解释器是否处于虚拟环境，文档给出的前缀比较表达式是什么？能否只凭 VIRTUAL_ENV 是否存在来判断？简短答案只写比较表达式，其余条件说明写入 explanation。",
+      "answer_type": "text",
+      "reference_answers": [
+        "sys.prefix != sys.base_prefix",
+        "sys.base_prefix != sys.prefix"
+      ],
+      "required_slots": [
+        {
+          "id": "activation_variable_not_reliable",
+          "description": "虚拟环境无需先激活即可使用，因此不能依赖 VIRTUAL_ENV 是否存在判定当前解释器是否在虚拟环境中。",
+          "acceptable": [
+            "不能，未激活也可以直接运行虚拟环境解释器",
+            "VIRTUAL_ENV 不可靠，因为使用虚拟环境不要求激活"
+          ],
+          "evidence_ids": [
+            "doc-13d28706dcf5"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "可以直接使用虚拟环境解释器的完整路径。"
+      ],
+      "critical_errors": [
+        "声称 VIRTUAL_ENV 未设置就证明没有使用虚拟环境。",
+        "用 sys.prefix == sys.base_prefix 表示处于虚拟环境。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-ae4cec628e01",
+          "quote": "It is sufficient to check sys.prefix != sys.base_prefix to determine if the current interpreter is\nrunning from a virtual environment.",
+          "source_url": "https://docs.python.org/3.12/library/venv.html#how-venvs-work",
+          "source_title": "Python 3.12 venv / How venvs work"
+        },
+        {
+          "passage_id": "doc-13d28706dcf5",
+          "quote": "Since explicitly activating a virtual environment is not required to use it, VIRTUAL_ENV cannot be relied upon to determine\nwhether a virtual environment is being used.",
+          "source_url": "https://docs.python.org/3.12/library/venv.html#how-venvs-work",
+          "source_title": "Python 3.12 venv / How venvs work"
+        }
+      ]
+    },
+    {
+      "id": "rv2-05",
+      "scenario_id": "pip-global-package-version-limits",
+      "category": "Python与pip",
+      "question": "安装应用时，希望用 caps.txt 统一限制依赖版本，pip install 应增加什么参数？如果某个包只写在这个文件中，是否会因此自动安装？简短答案只写参数，其余条件说明写入 explanation。",
+      "answer_type": "command",
+      "reference_answers": [
+        "-c caps.txt",
+        "--constraint caps.txt",
+        "--constraint=caps.txt"
+      ],
+      "required_slots": [
+        {
+          "id": "constraint_does_not_trigger_install",
+          "description": "仅将一个包列入 constraints 文件不会触发安装；该文件只约束被要求安装的包的版本。",
+          "acceptable": [
+            "不会，约束文件本身不触发包安装",
+            "只限制版本，包还须由实际安装需求引入"
+          ],
+          "evidence_ids": [
+            "doc-a55050fa61e4"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "约束项必须有包名，不能是 editable，也不能指定 extras。"
+      ],
+      "critical_errors": [
+        "将 -r caps.txt 作为仅限版本用途的等价参数。",
+        "声称列入 caps.txt 的所有包都会自动安装。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-a55050fa61e4",
+          "quote": "Constraints files are requirements files that only control which version of a\nrequirement is installed, not whether it is installed or not.",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#constraints-files",
+          "source_title": "pip User Guide / Constraints Files"
+        },
+        {
+          "passage_id": "doc-a55050fa61e4",
+          "quote": "Including a package in a constraints file does not trigger installation of the\npackage.",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#constraints-files",
+          "source_title": "pip User Guide / Constraints Files"
+        },
+        {
+          "passage_id": "doc-a55050fa61e4",
+          "quote": "python -m pip install -c constraints.txt",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#constraints-files",
+          "source_title": "pip User Guide / Constraints Files"
+        }
+      ]
+    },
+    {
+      "id": "rv2-06",
+      "scenario_id": "pip-package-specific-stable-release-policy",
+      "category": "Python与pip",
+      "question": "安装 SomePackage 时，要显式禁止为 DependencyPackage 选择预发布版本，而其他包沿用原策略，应给 pip install 加什么参数？依据语料，这个选项从哪个 pip 版本加入？简短答案只写参数，其余条件说明写入 explanation。",
+      "answer_type": "command",
+      "reference_answers": [
+        "--only-final=DependencyPackage",
+        "--only-final DependencyPackage"
+      ],
+      "required_slots": [
+        {
+          "id": "pip_26_minimum",
+          "description": "按冻结官方指南，这个按包控制预发布选择的选项从 pip 26.0 加入。",
+          "acceptable": [
+            "pip 26.0 起",
+            "26.0"
+          ],
+          "evidence_ids": [
+            "doc-f496907bbfd2"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [
+        "包级设置优先于 :all:。",
+        "可说明不能与 --pre 同时使用。"
+      ],
+      "critical_errors": [
+        "使用 --only-final=:all:，改变所有包的策略。",
+        "使用 --all-releases=DependencyPackage，反而允许预发布版本。",
+        "声称旧于 pip 26.0 的版本都支持这个选项。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-f496907bbfd2",
+          "quote": "Added in version 26.0.",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#controlling-pre-release-installation",
+          "source_title": "pip User Guide / Controlling Pre-release Installation"
+        },
+        {
+          "passage_id": "doc-f496907bbfd2",
+          "quote": "Use --only-final to explicitly disable pre-releases for specific packages:",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#controlling-pre-release-installation",
+          "source_title": "pip User Guide / Controlling Pre-release Installation"
+        },
+        {
+          "passage_id": "doc-f496907bbfd2",
+          "quote": "python -m pip install --only-final=DependencyPackage SomePackage",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#controlling-pre-release-installation",
+          "source_title": "pip User Guide / Controlling Pre-release Installation"
+        }
+      ]
+    },
+    {
+      "id": "rv2-07",
+      "scenario_id": "git-clone-release-tag-checkout",
+      "category": "Git与HF选项",
+      "question": "用普通的非裸 git clone 直接检出仓库里已有的 v2.1 标签，应添加哪个参数？克隆后的 HEAD 处于什么状态？简短答案只写参数，其余条件说明写入 explanation。",
+      "answer_type": "command",
+      "reference_answers": [
+        "--branch v2.1",
+        "--branch=v2.1",
+        "-b v2.1"
+      ],
+      "required_slots": [
+        {
+          "id": "tag_checkout_detached_head",
+          "description": "--branch 接收标签时，结果仓库的 HEAD 在该标签所指的提交上处于 detached 状态。",
+          "acceptable": [
+            "HEAD 分离，指向标签的提交",
+            "detached HEAD at the tagged commit"
+          ],
+          "evidence_ids": [
+            "doc-9d354f1ffd0f"
+          ],
+          "slot_type": "behavior_explanation"
+        }
+      ],
+      "allowed_extras": [
+        "可给出包含仓库地址的完整 git clone 命令。"
+      ],
+      "critical_errors": [
+        "声称会自动创建并切换到一个名为 v2.1 的本地分支。",
+        "声称 --branch 不能接收标签。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-9d354f1ffd0f",
+          "quote": "-b <name>\n\n--branch= <name>",
+          "source_url": "https://git-scm.com/docs/git-clone#_options",
+          "source_title": "Git clone / OPTIONS"
+        },
+        {
+          "passage_id": "doc-9d354f1ffd0f",
+          "quote": "--branch can also take tags and detaches the HEAD at that commit\nin the resulting repository.",
+          "source_url": "https://git-scm.com/docs/git-clone#_options",
+          "source_title": "Git clone / OPTIONS"
+        }
+      ]
+    },
+    {
+      "id": "rv2-08",
+      "scenario_id": "git-pull-fast-forward-only-update",
+      "category": "Git与HF选项",
+      "question": "git pull 时只允许快进更新，应显式添加哪个选项？若本地和远程分支已经分叉，这次操作会怎样？简短答案只写选项，其余条件说明写入 explanation。",
+      "answer_type": "command",
+      "reference_answers": [
+        "--ff-only",
+        "git pull --ff-only"
+      ],
+      "required_slots": [
+        {
+          "id": "divergence_causes_failure",
+          "description": "本地分支与远程分支已经分叉时，--ff-only 拉取不能完成快进更新并失败。",
+          "acceptable": [
+            "分叉时失败",
+            "历史分叉时拒绝更新，不自动合并或变基"
+          ],
+          "evidence_ids": [
+            "doc-e8acb0b8fcca"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "git pull 会先执行 fetch。"
+      ],
+      "critical_errors": [
+        "声称分叉时自动创建合并提交。",
+        "声称分叉时会自动 rebase。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-e8acb0b8fcca",
+          "quote": "git pull --ff-only will only do \"fast-forward\" updates: it\nfails if your local branch has diverged from the remote branch.",
+          "source_url": "https://git-scm.com/docs/git-pull#_description",
+          "source_title": "Git pull / DESCRIPTION"
+        }
+      ]
+    },
+    {
+      "id": "rv2-09",
+      "scenario_id": "hf-snapshot-json-file-selection",
+      "category": "Git与HF选项",
+      "question": "调用 snapshot_download 时只想下载文件名匹配 *.json 的文件，应设置哪个参数及其值？这个匹配规则按正则表达式还是哪种模式解释？简短答案只写参数赋值，其余条件说明写入 explanation。",
+      "answer_type": "command",
+      "reference_answers": [
+        "allow_patterns=\"*.json\"",
+        "allow_patterns='*.json'",
+        "allow_patterns=[\"*.json\"]",
+        "allow_patterns=['*.json']"
+      ],
+      "required_slots": [
+        {
+          "id": "patterns_are_globs",
+          "description": "文件筛选采用标准通配符（glob）模式并基于 fnmatch；不能当作正则表达式。",
+          "acceptable": [
+            "标准通配符 glob，基于 fnmatch",
+            "glob 通配模式，不是正则表达式"
+          ],
+          "evidence_ids": [
+            "doc-0241e350f8f3"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "参数也接受模式列表。",
+        "可配合 ignore_patterns 排除部分文件。"
+      ],
+      "critical_errors": [
+        "用 ignore_patterns=\"*.json\"，导致排除 JSON 文件。",
+        "将该模式解释成正则表达式。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-0241e350f8f3",
+          "quote": "These parameters accept either a single pattern or a list of patterns. Patterns are Standard Wildcards (globbing\npatterns) as documented here . The pattern matching is\nbased on fnmatch .",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/guides/download",
+          "source_title": "Hugging Face Hub Download files / Filter files to download"
+        },
+        {
+          "passage_id": "doc-0241e350f8f3",
+          "quote": "snapshot_download(repo_id=\"lysandre/arxiv-nlp\", allow_patterns=\"*.json\")",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/guides/download",
+          "source_title": "Hugging Face Hub Download files / Filter files to download"
+        }
+      ]
+    },
+    {
+      "id": "rv2-10",
+      "scenario_id": "aup-remote-server-explicit-stop",
+      "category": "云端服务与运行",
+      "question": "AUP 上的工作已经保存，要结束远程服务器并释放共享资源，应在 JupyterHub 控制页点击哪个按钮？关闭浏览器标签页前还应确认什么状态？简短答案只写按钮名，其余条件说明写入 explanation。",
+      "answer_type": "text",
+      "reference_answers": [
+        "Stop my server",
+        "点击 Stop my server"
+      ],
+      "required_slots": [
+        {
+          "id": "wait_until_server_stopped",
+          "description": "应等待并确认远程服务器已经停止，然后才关闭浏览器标签页。",
+          "acceptable": [
+            "等服务器已停止后再关闭标签页",
+            "确认 server has stopped"
+          ],
+          "evidence_ids": [
+            "doc-8e3e7bb85338"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "仅关闭浏览器标签页或退出登录不一定停止远程服务器。"
+      ],
+      "critical_errors": [
+        "将关闭标签页或退出登录视为必定停止远程服务器的操作。",
+        "建议不确认停止状态就直接关闭页面。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-8e3e7bb85338",
+          "quote": "Click Stop my server .\n\nWait until the server has stopped before closing the browser tab.",
+          "source_url": "https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html#stop-your-server",
+          "source_title": "AUP Platform Basics / Stop Your Server"
+        },
+        {
+          "passage_id": "doc-8e3e7bb85338",
+          "quote": "Closing the browser tab or logging out does not always stop the remote server. Use Stop my server when you are done.",
+          "source_url": "https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html#stop-your-server",
+          "source_title": "AUP Platform Basics / Stop Your Server"
+        }
+      ]
+    },
+    {
+      "id": "rv2-11",
+      "scenario_id": "streamlit-origin-allowlist-activation",
+      "category": "云端服务与运行",
+      "question": "部署 Streamlit 时，要用名单指定允许访问的来源，应在哪个完整配置键中填写来源列表？这个名单生效还要求哪个保护开关开启？简短答案只写完整配置键，其余条件说明写入 explanation。",
+      "answer_type": "text",
+      "reference_answers": [
+        "server.corsAllowedOrigins",
+        "[server] corsAllowedOrigins"
+      ],
+      "required_slots": [
+        {
+          "id": "cors_protection_enabled",
+          "description": "来源允许列表要求 CORS 保护开启，即 server.enableCORS=True；关闭 CORS 时这个配置不起作用。",
+          "acceptable": [
+            "server.enableCORS=True",
+            "必须开启 CORS，禁用 CORS 时名单无效"
+          ],
+          "evidence_ids": [
+            "doc-7462f40ca528"
+          ],
+          "slot_type": "prerequisite"
+        }
+      ],
+      "allowed_extras": [
+        "可给出完整 TOML 示例，在 [server] 下设置 corsAllowedOrigins 和 enableCORS。"
+      ],
+      "critical_errors": [
+        "声称 server.enableCORS=False 时名单仍能限制来源。",
+        "以 server.allowedHosts 替代来源列表配置。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-7462f40ca528",
+          "quote": "# If CORS protection is enabled (`server.enableCORS=True`), use this\n# option to set a list of allowed origins that the Streamlit server will\n# accept traffic from.\n#\n# This config option does nothing if CORS protection is disabled.",
+          "source_url": "https://docs.streamlit.io/develop/api-reference/configuration/config.toml#server",
+          "source_title": "Streamlit config.toml / Server"
+        },
+        {
+          "passage_id": "doc-7462f40ca528",
+          "quote": "corsAllowedOrigins = []",
+          "source_url": "https://docs.streamlit.io/develop/api-reference/configuration/config.toml#server",
+          "source_title": "Streamlit config.toml / Server"
+        }
+      ]
+    },
+    {
+      "id": "rv2-12",
+      "scenario_id": "hf-file-transfer-timeout-failure",
+      "category": "云端服务与运行",
+      "question": "网络较慢，想把 huggingface_hub 下载文件时等待服务器响应的超时设为 60 秒，应设置哪个环境变量？若仍然超时，文档规定会抛出什么异常？简短答案只写环境变量赋值，其余条件说明写入 explanation。",
+      "answer_type": "command",
+      "reference_answers": [
+        "HF_HUB_DOWNLOAD_TIMEOUT=60",
+        "export HF_HUB_DOWNLOAD_TIMEOUT=60",
+        "$env:HF_HUB_DOWNLOAD_TIMEOUT='60'",
+        "$env:HF_HUB_DOWNLOAD_TIMEOUT=\"60\""
+      ],
+      "required_slots": [
+        {
+          "id": "download_timeout_raises",
+          "description": "下载文件的请求超时时抛出 TimeoutError，不能混同为元数据请求超时后使用缓存的规则。",
+          "acceptable": [
+            "TimeoutError",
+            "抛出 TimeoutError 异常"
+          ],
+          "evidence_ids": [
+            "doc-cc0b2d64d8f5"
+          ],
+          "slot_type": "behavior_explanation"
+        }
+      ],
+      "allowed_extras": [
+        "值的单位是秒，默认值为 10 秒。"
+      ],
+      "critical_errors": [
+        "把 HF_HUB_ETAG_TIMEOUT 当成文件下载超时变量。",
+        "声称文件下载请求超时必定自动回退到缓存且不报错。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-cc0b2d64d8f5",
+          "quote": "Integer value to define the number of seconds to wait for server response when downloading a file. If the request times out, a TimeoutError is raised.",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables",
+          "source_title": "Hugging Face Hub Environment variables / HF_HUB_DOWNLOAD_TIMEOUT"
+        }
+      ]
+    }
+  ]
+}

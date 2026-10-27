@@ -1,0 +1,751 @@
+{
+  "metadata": {
+    "dataset_version": "condition-eval-v1",
+    "created_on": "2026-10-27",
+    "annotation_status": "AI-assisted source-grounded draft; not independently human-validated",
+    "source_corpus_sha256": "84e09f7dd713a798bcc101cd83741cf1c360bf22f7c539a4d4f5d710f740f5d7",
+    "selection": "20 distinct document-supported tasks, 5 per category; no model predictions or group outcomes inspected during selection",
+    "excluded_development_scenarios": [
+      "aup-q01",
+      "aup-q02",
+      "aup-q03",
+      "aup-q04",
+      "aup-q05",
+      "aup-q06"
+    ],
+    "gold_access": "References and slot labels are scoring-only and must not be exposed to retrieval, packing, or generation.",
+    "construct": "Completeness of operational conditions and key constraints; slot_type separates prerequisites, applicability, operational constraints, and behavior explanations. Behavior explanations are not claimed to be pure execution prerequisites.",
+    "slot_scoring_context": "Judge the complete answer together with the stated question context. A correct command or path that implements the condition counts; repeating an already-given environment is not required. Acceptable strings are semantic examples, not mandatory keyword patterns."
+  },
+  "items": [
+    {
+      "id": "ce-01",
+      "answer_type": "text",
+      "reference_answers": [
+        "本地路径",
+        "local path"
+      ],
+      "required_slots": [
+        {
+          "id": "url_disables_local_optimization",
+          "description": "源仓库以 URL 指定时 --local 被忽略，不使用本地优化；需要路径形式。",
+          "acceptable": [
+            "URL 形式时 --local 被忽略",
+            "本地路径使用优化，URL 不使用本地优化"
+          ],
+          "evidence_ids": [
+            "doc-6310f3359653"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "声称只要仓库在本机，使用 file:// URL 加 --local 也必定启用本地优化。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-6310f3359653",
+          "quote": "If the repository is specified as a local path (e.g., /path/to/repo ),\nthis is the default, and --local is essentially a no-op.",
+          "source_url": "https://git-scm.com/docs/git-clone#_options",
+          "source_title": "Git clone / OPTIONS"
+        },
+        {
+          "passage_id": "doc-6310f3359653",
+          "quote": "If the\nrepository is specified as a URL, then this flag is ignored (and we\nnever use the local optimizations).",
+          "source_url": "https://git-scm.com/docs/git-clone#_options",
+          "source_title": "Git clone / OPTIONS"
+        }
+      ]
+    },
+    {
+      "id": "ce-02",
+      "answer_type": "path",
+      "reference_answers": [
+        "/work/.streamlit/config.toml"
+      ],
+      "required_slots": [
+        {
+          "id": "cwd_not_script_directory",
+          "description": "配置位置依据调用 streamlit run 时的工作目录 /work，而非脚本目录 /other；正确完整路径即可体现。",
+          "acceptable": [
+            "/work/.streamlit/config.toml",
+            "执行 streamlit run 的工作目录",
+            "/work 是工作目录"
+          ],
+          "evidence_ids": [
+            "doc-0cc2d686144b"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "若目录不存在，先创建 .streamlit 目录。"
+      ],
+      "critical_errors": [
+        "建议仅将配置放到 /other/.streamlit/config.toml 并保证会生效。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-0cc2d686144b",
+          "quote": "Your working directory is wherever you call streamlit run .",
+          "source_url": "https://docs.streamlit.io/develop/api-reference/configuration/config.toml",
+          "source_title": "Streamlit config.toml / File location"
+        }
+      ]
+    },
+    {
+      "id": "ce-03",
+      "answer_type": "text",
+      "reference_answers": [
+        "不可以",
+        "不能",
+        "不应原地修改"
+      ],
+      "required_slots": [
+        {
+          "id": "do_not_mutate_cached_file",
+          "description": "返回路径指向 HF 缓存，不能原地修改以免损坏缓存；明确禁止该修改操作即满足约束。",
+          "acceptable": [
+            "不可以原地修改",
+            "不要修改缓存文件",
+            "返回缓存路径，修改会损坏缓存"
+          ],
+          "evidence_ids": [
+            "doc-bfff8c186485"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [
+        "可建议复制到独立工作文件后再修改；这属于不影响缓存的安全替代，不要求出现该额外建议。"
+      ],
+      "critical_errors": [
+        "保证修改返回路径中的文件不会影响 HF 缓存。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-bfff8c186485",
+          "quote": "The returned filepath is a pointer to the HF local cache. Therefore, it is important to not modify the file to avoid\nhaving a corrupted cache.",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/guides/download",
+          "source_title": "Hugging Face Hub Download files / Download a single file"
+        }
+      ]
+    },
+    {
+      "id": "ce-04",
+      "answer_type": "text",
+      "reference_answers": [
+        "在新位置重新创建虚拟环境",
+        "重新创建虚拟环境",
+        "在目标位置重建虚拟环境"
+      ],
+      "required_slots": [
+        {
+          "id": "absolute_shebang",
+          "description": "环境中的脚本 shebang 包含解释器绝对路径，所以环境通常不可直接搬迁。",
+          "acceptable": [
+            "shebang 包含绝对路径",
+            "脚本中的解释器路径是绝对路径，搬迁后可能失效"
+          ],
+          "evidence_ids": [
+            "doc-45e95a128c47"
+          ],
+          "slot_type": "behavior_explanation"
+        }
+      ],
+      "allowed_extras": [
+        "使用已有 requirements.txt 在新环境重新安装依赖；不要求先删除旧环境。"
+      ],
+      "critical_errors": [
+        "保证移动后只要重新激活就无需重建环境。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-45e95a128c47",
+          "quote": "their shebang lines contain the absolute paths\nto their environment’s interpreters.",
+          "source_url": "https://docs.python.org/3.12/library/venv.html#how-venvs-work",
+          "source_title": "Python 3.12 venv / How venvs work"
+        }
+      ]
+    },
+    {
+      "id": "ce-05",
+      "answer_type": "text",
+      "reference_answers": [
+        "HF_HOME"
+      ],
+      "required_slots": [
+        {
+          "id": "hf_home_unset_required",
+          "description": "已给定 HF_HOME 时仍以它为准；只有未设置 HF_HOME 时才使用 XDG_CACHE_HOME。",
+          "acceptable": [
+            "本场景仍以 HF_HOME 为准",
+            "HF_HOME 未设置时才使用 XDG_CACHE_HOME",
+            "Used only when HF_HOME is not set"
+          ],
+          "evidence_ids": [
+            "doc-476d29669e34"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "声称 XDG_CACHE_HOME 始终覆盖已设置的 HF_HOME。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-476d29669e34",
+          "quote": "Used only when HF_HOME is not set!",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables",
+          "source_title": "Hugging Face Hub Environment variables / XDG_CACHE_HOME"
+        }
+      ]
+    },
+    {
+      "id": "ce-06",
+      "answer_type": "command",
+      "reference_answers": [
+        "python -m pip check"
+      ],
+      "required_slots": [
+        {
+          "id": "error_exit_one",
+          "description": "缺包或依赖版本错误时退出码为 1，不能当作检查通过。",
+          "acceptable": [
+            "退出码 1",
+            "返回 1",
+            "exit code 1"
+          ],
+          "evidence_ids": [
+            "doc-979609373f49"
+          ],
+          "slot_type": "behavior_explanation"
+        }
+      ],
+      "allowed_extras": [
+        "全部依赖兼容时显示 No broken requirements found. 且返回 0。"
+      ],
+      "critical_errors": [
+        "声称缺少依赖或版本不兼容时退出码仍为 0。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-2a07d1dd6015",
+          "quote": "Verify installed packages have compatible dependencies.",
+          "source_url": "https://pip.pypa.io/en/stable/cli/pip_check/#description",
+          "source_title": "pip check / Description"
+        },
+        {
+          "passage_id": "doc-979609373f49",
+          "quote": "pyramid 1.5.2 requires WebOb, which is not installed. $ echo $? 1",
+          "source_url": "https://pip.pypa.io/en/stable/cli/pip_check/#examples",
+          "source_title": "pip check / Examples"
+        },
+        {
+          "passage_id": "doc-979609373f49",
+          "quote": "pyramid 1.5.2 has requirement WebOb>=1.3.1, but you have WebOb 0.8. $ echo $? 1",
+          "source_url": "https://pip.pypa.io/en/stable/cli/pip_check/#examples",
+          "source_title": "pip check / Examples"
+        }
+      ]
+    },
+    {
+      "id": "ce-07",
+      "answer_type": "text",
+      "reference_answers": [
+        "only-if-needed"
+      ],
+      "required_slots": [
+        {
+          "id": "dependency_requirement_unsatisfied",
+          "description": "间接依赖只有在不满足新父包的要求时才升级。",
+          "acceptable": [
+            "依赖不满足新父包要求时升级",
+            "only if it does not satisfy the new parent requirements"
+          ],
+          "evidence_ids": [
+            "doc-ff20058c7888"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [
+        "说明 --upgrade 面向直接需求，--upgrade-strategy 面向间接依赖。"
+      ],
+      "critical_errors": [
+        "推荐 eager 并称其不会升级已经满足条件的依赖。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-ff20058c7888",
+          "quote": "only-if-needed : upgrades a dependency only if it does not satisfy the new\nparent requirements",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#only-if-needed-recursive-upgrade",
+          "source_title": "pip User Guide / “Only if needed” Recursive Upgrade"
+        }
+      ]
+    },
+    {
+      "id": "ce-08",
+      "answer_type": "text",
+      "reference_answers": [
+        "不可以",
+        "不能"
+      ],
+      "required_slots": [
+        {
+          "id": "user_site_not_visible",
+          "description": "默认隔离环境的 Python 路径不可见用户 site-packages。",
+          "acceptable": [
+            "用户 site-packages 不可见",
+            "user site 不在 Python 路径"
+          ],
+          "evidence_ids": [
+            "doc-cade3513b44d"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "建议默认隔离环境直接 --user 安装并保证该环境能够使用。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-cade3513b44d",
+          "quote": "Pip will not perform a --user install in a --no-site-packages virtualenv (i.e. the default kind of virtualenv), due to the user site not\nbeing on the python path.",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#user-installs",
+          "source_title": "pip User Guide / User Installs"
+        }
+      ]
+    },
+    {
+      "id": "ce-09",
+      "answer_type": "command",
+      "reference_answers": [
+        "python -m pip install --no-index --find-links=/local/wheels -r requirements.txt",
+        "python -m pip install --no-index --find-links /local/wheels -r requirements.txt",
+        "pip install --no-index --find-links=/local/wheels -r requirements.txt",
+        "pip install --no-index --find-links /local/wheels -r requirements.txt"
+      ],
+      "required_slots": [
+        {
+          "id": "no_remote_index",
+          "description": "同时通过 --no-index 禁止索引访问、通过 --find-links 指向已给定的本地目录；完整正确命令即可体现，题目已保证 wheel 齐备，不要求复述。",
+          "acceptable": [
+            "--no-index 与 --find-links=/local/wheels 同用",
+            "--no-index 与 --find-links /local/wheels 同用"
+          ],
+          "evidence_ids": [
+            "doc-3e4be2e84421"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "省略 --no-index 却保证绝不会访问 PyPI。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-3e4be2e84421",
+          "quote": "To build wheels for your requirements and all their dependencies to a local\ndirectory:",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#id6",
+          "source_title": "pip User Guide / Installing from Wheels"
+        },
+        {
+          "passage_id": "doc-3e4be2e84421",
+          "quote": "python -m pip install --no-index --find-links=/local/wheels -r requirements.txt",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#id6",
+          "source_title": "pip User Guide / Installing from Wheels"
+        }
+      ]
+    },
+    {
+      "id": "ce-10",
+      "answer_type": "command",
+      "reference_answers": [
+        "--isolated"
+      ],
+      "required_slots": [
+        {
+          "id": "ignore_environment_and_user_config",
+          "description": "隔离模式忽略环境变量与用户配置两者。",
+          "acceptable": [
+            "忽略环境变量和用户配置",
+            "ignoring environment variables and user configuration"
+          ],
+          "evidence_ids": [
+            "doc-3dedb0aa5920"
+          ],
+          "slot_type": "behavior_explanation"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "将 --isolated 解释为创建一个新的 Python 虚拟环境。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-3dedb0aa5920",
+          "quote": "Run pip in an isolated mode, ignoring environment variables and user configuration.",
+          "source_url": "https://pip.pypa.io/en/stable/cli/pip/#general-options",
+          "source_title": "pip General Options / General Options"
+        }
+      ]
+    },
+    {
+      "id": "ce-11",
+      "answer_type": "text",
+      "reference_answers": [
+        "不支持"
+      ],
+      "required_slots": [
+        {
+          "id": "rocm_scope",
+          "description": "在已给定的 ROCm 场景判断不支持即可，不要求再次复述 ROCm。",
+          "acceptable": [
+            "不支持",
+            "ROCm 不支持 TF32",
+            "TF32 is not supported on ROCm"
+          ],
+          "evidence_ids": [
+            "doc-ebc4437f0da2"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "指导通过 CUDA TF32 开关即可在 ROCm 上启用 TF32。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-ebc4437f0da2",
+          "quote": "TF32 is not supported on ROCm.",
+          "source_url": "https://docs.pytorch.org/docs/2.9/notes/hip.html",
+          "source_title": "PyTorch 2.9 HIP semantics / TensorFloat-32(TF32) on ROCm"
+        }
+      ]
+    },
+    {
+      "id": "ce-12",
+      "answer_type": "command",
+      "reference_answers": [
+        "USE_ROCM_CK_SDPA=1"
+      ],
+      "required_slots": [
+        {
+          "id": "build_time_not_runtime_only",
+          "description": "在题面已给定的构建阶段启用正确 SDPA 变量即可；若只建议运行时临时设置则不满足。",
+          "acceptable": [
+            "USE_ROCM_CK_SDPA=1",
+            "构建 PyTorch 时设置",
+            "编译阶段启用，运行时设置不足"
+          ],
+          "evidence_ids": [
+            "doc-63b86b2a7ad8"
+          ],
+          "slot_type": "prerequisite"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "只建议在已经构建完成后的 Python 进程临时设置变量就保证启用 CK。",
+        "将仅适用于 GEMM 的 USE_ROCM_CK_GEMM 当作 SDPA 的唯一构建要求。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-63b86b2a7ad8",
+          "quote": "First the user must have built\npytorch while setting the corresponding environment variable to ‘1’",
+          "source_url": "https://docs.pytorch.org/docs/2.9/notes/hip.html",
+          "source_title": "PyTorch 2.9 HIP semantics / Enabling/Disabling ROCm Composable Kernel"
+        },
+        {
+          "passage_id": "doc-63b86b2a7ad8",
+          "quote": "SDPA: USE_ROCM_CK_SDPA=1",
+          "source_url": "https://docs.pytorch.org/docs/2.9/notes/hip.html",
+          "source_title": "PyTorch 2.9 HIP semantics / Enabling/Disabling ROCm Composable Kernel"
+        }
+      ]
+    },
+    {
+      "id": "ce-13",
+      "answer_type": "text",
+      "reference_answers": [
+        "setuptools"
+      ],
+      "required_slots": [
+        {
+          "id": "python312_change",
+          "description": "此核心依赖变化从 Python 3.12 起生效。",
+          "acceptable": [
+            "Python 3.12 起",
+            "Changed in version 3.12"
+          ],
+          "evidence_ids": [
+            "doc-595f63ea164c"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "声称 Python 3.12 的 venv 仍保证自动安装 setuptools。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-595f63ea164c",
+          "quote": "Changed in version 3.12: setuptools is no longer a core venv dependency.",
+          "source_url": "https://docs.python.org/3.12/library/venv.html#creating-virtual-environments",
+          "source_title": "Python 3.12 venv / Creating virtual environments"
+        }
+      ]
+    },
+    {
+      "id": "ce-14",
+      "answer_type": "text",
+      "reference_answers": [
+        "完整长度的 commit hash",
+        "完整 commit hash",
+        "完整提交哈希",
+        "完整长度提交哈希"
+      ],
+      "required_slots": [
+        {
+          "id": "full_hash_not_seven_chars",
+          "description": "commit revision 必须是完整长度，不能使用 7 字符短哈希。",
+          "acceptable": [
+            "完整哈希而非 7 位",
+            "full-length hash instead of a 7-character commit hash"
+          ],
+          "evidence_ids": [
+            "doc-b5310390b58e"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "保证 7 位 commit 缩写可用于该下载参数。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-b5310390b58e",
+          "quote": "When using the commit hash, it must be the full-length hash instead of a 7-character commit hash.",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/guides/download",
+          "source_title": "Hugging Face Hub Download files / From specific version"
+        }
+      ]
+    },
+    {
+      "id": "ce-15",
+      "answer_type": "command",
+      "reference_answers": [
+        "--no-single-branch"
+      ],
+      "required_slots": [
+        {
+          "id": "depth_implies_single_branch",
+          "description": "--depth 默认隐含单分支；在已给定 --depth 的命令上添加 --no-single-branch 已体现取消该条件，不要求重复解释。",
+          "acceptable": [
+            "--no-single-branch",
+            "--depth 隐含 --single-branch",
+            "默认只取单分支，--no-single-branch 取消"
+          ],
+          "evidence_ids": [
+            "doc-f3a2a69186d7"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [
+        "说明仍按所指定 depth 限制历史。"
+      ],
+      "critical_errors": [
+        "声称 --no-single-branch 会取消浅克隆深度并下载所有完整历史。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-f3a2a69186d7",
+          "quote": "Implies --single-branch unless --no-single-branch is given to fetch the histories near the\ntips of all branches.",
+          "source_url": "https://git-scm.com/docs/git-clone#_options",
+          "source_title": "Git clone / OPTIONS"
+        }
+      ]
+    },
+    {
+      "id": "ce-16",
+      "answer_type": "text",
+      "reference_answers": [
+        "problem matcher",
+        "problemMatcher",
+        "能识别完成状态的 problem matcher",
+        "跟踪完成状态的 problemMatcher"
+      ],
+      "required_slots": [
+        {
+          "id": "background_done_detection",
+          "description": "problem matcher 必须能跟踪后台/watch 任务何时完成当前阶段。",
+          "acceptable": [
+            "识别任务完成状态",
+            "tracks when background/watch tasks are done"
+          ],
+          "evidence_ids": [
+            "doc-c5dab9f215eb"
+          ],
+          "slot_type": "prerequisite"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "声称只设 dependsOrder: sequence 就能自动识别后台 watch 任务完成，不需要 matcher。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-c5dab9f215eb",
+          "quote": "Any background/watch tasks used in dependsOn with \"dependsOrder\": \"sequence\" must have a problem matcher that tracks when they are \"done\".",
+          "source_url": "https://code.visualstudio.com/docs/debugtest/tasks#_compound-tasks",
+          "source_title": "VS Code Tasks / Compound tasks"
+        }
+      ]
+    },
+    {
+      "id": "ce-17",
+      "answer_type": "text",
+      "reference_answers": [
+        "绝对路径"
+      ],
+      "required_slots": [
+        {
+          "id": "absolute_required",
+          "description": "已给定 folderWatchList 场景下，路径必须是绝对路径。",
+          "acceptable": [
+            "绝对路径",
+            "必须为绝对路径",
+            "Paths must be absolute"
+          ],
+          "evidence_ids": [
+            "doc-7310af941c58"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "称 folderWatchList 可像 folderWatchBlacklist 一样自由使用相对路径。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-7310af941c58",
+          "quote": "Use this option to specify additional\n# directories to watch. Paths must be absolute.",
+          "source_url": "https://docs.streamlit.io/develop/api-reference/configuration/config.toml#server",
+          "source_title": "Streamlit config.toml / Server"
+        }
+      ]
+    },
+    {
+      "id": "ce-18",
+      "answer_type": "command",
+      "reference_answers": [
+        "HF_HUB_OFFLINE=1"
+      ],
+      "required_slots": [
+        {
+          "id": "cache_must_exist",
+          "description": "离线下载只能访问已缓存文件，没有所需缓存时会报错。",
+          "acceptable": [
+            "没有缓存则报错",
+            "only cached files; no cache raises an error"
+          ],
+          "evidence_ids": [
+            "doc-36d5f8f2566e"
+          ],
+          "slot_type": "prerequisite"
+        }
+      ],
+      "allowed_extras": [
+        "调用 HfApi 方法会触发 OfflineModeIsEnabled。"
+      ],
+      "critical_errors": [
+        "称离线模式在缓存缺失时会自动联网补下载。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-36d5f8f2566e",
+          "quote": "If you try to download files, only the cached files will be accessed. If no cache file is detected, an error is raised",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables",
+          "source_title": "Hugging Face Hub Environment variables / HF_HUB_OFFLINE"
+        }
+      ]
+    },
+    {
+      "id": "ce-19",
+      "answer_type": "command",
+      "reference_answers": [
+        "--require-virtualenv"
+      ],
+      "required_slots": [
+        {
+          "id": "outside_venv_errors",
+          "description": "不在虚拟环境时应报错退出，而不是继续全局安装或自动创建环境。",
+          "acceptable": [
+            "环境外报错退出",
+            "exit with an error otherwise"
+          ],
+          "evidence_ids": [
+            "doc-3dedb0aa5920"
+          ],
+          "slot_type": "operational_constraint"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "声称该选项会自动创建或激活虚拟环境。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-3dedb0aa5920",
+          "quote": "Allow pip to only run in a virtual environment; exit with an error otherwise.",
+          "source_url": "https://pip.pypa.io/en/stable/cli/pip/#general-options",
+          "source_title": "pip General Options / General Options"
+        }
+      ]
+    },
+    {
+      "id": "ce-20",
+      "answer_type": "text",
+      "reference_answers": [
+        "HF_TOKEN",
+        "HF_TOKEN 环境变量"
+      ],
+      "required_slots": [
+        {
+          "id": "set_env_overrides_stored_token",
+          "description": "已设置的 HF_TOKEN 覆盖本机保存的 token（HF_TOKEN_PATH 或默认 HF_HOME/token）。",
+          "acceptable": [
+            "HF_TOKEN 覆盖本机保存的 token",
+            "environment token overrides stored token"
+          ],
+          "evidence_ids": [
+            "doc-bf134b631e5a"
+          ],
+          "slot_type": "applicability"
+        }
+      ],
+      "allowed_extras": [],
+      "critical_errors": [
+        "称磁盘保存的令牌始终优先于已设置 HF_TOKEN。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-bf134b631e5a",
+          "quote": "If set, this value will\noverwrite the token stored on the machine (in either $HF_TOKEN_PATH or \"$HF_HOME/token\" if the former is not set).",
+          "source_url": "https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables",
+          "source_title": "Hugging Face Hub Environment variables / HF_TOKEN"
+        }
+      ]
+    }
+  ]
+}

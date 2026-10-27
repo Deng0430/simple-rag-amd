@@ -1,0 +1,4 @@
+﻿split,group,n,em,answer_token_f1,ai_assisted_slot_f1,tp,fp,fn,annotated_hit_at_3,annotated_slot_quote_coverage,mean_input_tokens,ai_acceptable_count,ai_annotated_critical_error_count
+regression,D,20,0.4,0.5207411350889817,0.42857142857142855,9,13,11,0.35,0.35,793.55,8,3
+regression,H,20,0.4,0.5268920167641395,0.38095238095238093,8,14,12,0.4,0.4,998.1,8,2
+regression,X,20,0.45,0.5715616531165312,0.5217391304347826,12,14,8,0.4,0.6,1495.85,11,2

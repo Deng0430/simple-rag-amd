@@ -62,3 +62,21 @@ preserved; the JSON structure was simplified for this course demonstration.
 - Article paragraphs originate from Wikipedia, as described by SQuAD.
 
 The code's MIT license does not replace dataset, documentation or model licenses.
+
+## Local model and experimental annotations
+
+The local experiments use Ollama `qwen2.5:3b`, a Q4_K_M quantization of
+[Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct).
+The model and tokenizer retain their upstream license; neither weights nor
+tokenizer downloads are included in the repository.
+
+`condition_eval/` and `retrieval_eval_v2/` contain original, AI-assisted technical
+questions and provisional scoring annotations. Their gold/development files
+include short, attributed source quotations solely for checking the annotations.
+Those quotations retain the original documentation's terms and are not relicensed
+as MIT. Complete downloaded pages and extracted corpus files are not distributed.
+
+The `experiments/` directory publishes selected model outputs, numerical scores
+and provenance summaries. Gold construction and semantic slot scoring were
+AI-assisted; independent human validation has not been completed. These small
+course datasets are not expert-annotated benchmarks.

@@ -1,0 +1,190 @@
+{
+  "metadata": {
+    "dataset_version": "condition-eval-v1",
+    "created_on": "2026-10-27",
+    "annotation_status": "AI-assisted source-grounded draft; not independently human-validated",
+    "source_corpus_sha256": "84e09f7dd713a798bcc101cd83741cf1c360bf22f7c539a4d4f5d710f740f5d7",
+    "selection": "20 distinct document-supported tasks, 5 per category; no model predictions or group outcomes inspected during selection",
+    "excluded_development_scenarios": [
+      "aup-q01",
+      "aup-q02",
+      "aup-q03",
+      "aup-q04",
+      "aup-q05",
+      "aup-q06"
+    ],
+    "gold_access": "References and slot labels are scoring-only and must not be exposed to retrieval, packing, or generation.",
+    "construct": "Completeness of operational conditions and key constraints; slot_type separates prerequisites, applicability, operational constraints, and behavior explanations. Behavior explanations are not claimed to be pure execution prerequisites.",
+    "slot_scoring_context": "Judge the complete answer together with the stated question context. A correct command or path that implements the condition counts; repeating an already-given environment is not required. Acceptable strings are semantic examples, not mandatory keyword patterns.",
+    "role": "development_only",
+    "development_calibration": {
+      "date": "2026-10-27",
+      "backup": ".cache/condition_eval/development_before_calibration.json",
+      "changes": [
+        "dev-01 replaced by platform-dependent recursion-limit task; dev-02 focuses on short-versus-porcelain stability; dev-03 unchanged"
+      ],
+      "reason": "Retrieval/packing-only calibration to exercise genuinely different B/C contexts, before generation outputs were inspected; formal 20 questions and gold unchanged."
+    }
+  },
+  "questions": [
+    {
+      "id": "dev-01",
+      "scenario_id": "python-recursion-limit-platform",
+      "category": "开发集",
+      "question": "Python 可以把递归深度设置为任意大的值吗？sys.setrecursionlimit 有什么限制？简短答案写是否可以任意增大，并解释主要限制。",
+      "answer_type": "text",
+      "reference_answers": [
+        "不可以",
+        "不能",
+        "不可以任意增大",
+        "不能任意增大"
+      ],
+      "required_slots": [
+        {
+          "id": "platform_dependent_maximum",
+          "slot_type": "applicability",
+          "description": "最高可设置的递归深度依赖平台，不能视为任意值。",
+          "acceptable": [
+            "最高值依赖平台",
+            "最高限制因平台而异"
+          ],
+          "evidence_ids": [
+            "doc-d5515c5c19fd"
+          ]
+        },
+        {
+          "id": "excessive_limit_crash",
+          "slot_type": "operational_constraint",
+          "description": "设置过高可能导致崩溃，应谨慎提高。",
+          "acceptable": [
+            "过高可能崩溃",
+            "too-high limit can lead to a crash"
+          ],
+          "evidence_ids": [
+            "doc-d5515c5c19fd"
+          ]
+        },
+        {
+          "id": "below_current_depth_error",
+          "slot_type": "operational_constraint",
+          "description": "新限制低于当前递归深度时会抛出 RecursionError。",
+          "acceptable": [
+            "低于当前递归深度则抛 RecursionError",
+            "new limit too low at current depth raises RecursionError"
+          ],
+          "evidence_ids": [
+            "doc-d5515c5c19fd"
+          ]
+        }
+      ],
+      "allowed_extras": [
+        "解释该限制用于防止无限递归造成 C 栈溢出。"
+      ],
+      "critical_errors": [
+        "保证递归限制可任意增大而不会崩溃。",
+        "声称低于当前递归深度也会无条件成功设置。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-d5515c5c19fd",
+          "quote": "The highest possible limit is platform-dependent.",
+          "source_url": "https://docs.python.org/3.12/library/sys.html#module-sys",
+          "source_title": "Python 3.12 sys / sys — System-specific parameters and functions"
+        },
+        {
+          "passage_id": "doc-d5515c5c19fd",
+          "quote": "This should be done with care, because a too-high\nlimit can lead to a crash.",
+          "source_url": "https://docs.python.org/3.12/library/sys.html#module-sys",
+          "source_title": "Python 3.12 sys / sys — System-specific parameters and functions"
+        },
+        {
+          "passage_id": "doc-d5515c5c19fd",
+          "quote": "If the new limit is too low at the current recursion depth, a RecursionError exception is raised.",
+          "source_url": "https://docs.python.org/3.12/library/sys.html#module-sys",
+          "source_title": "Python 3.12 sys / sys — System-specific parameters and functions"
+        }
+      ]
+    },
+    {
+      "id": "dev-02",
+      "scenario_id": "git-status-stable-script-format",
+      "category": "开发集",
+      "question": "git status 的普通 short 格式与适合脚本解析的格式，有什么稳定性区别？简短答案写稳定性差别，并说明适合脚本解析的格式。",
+      "answer_type": "text",
+      "reference_answers": [
+        "porcelain 格式跨 Git 版本和用户配置保持稳定",
+        "porcelain 保证跨版本和配置稳定，普通 short 没有同样保证",
+        "porcelain v1 保证跨 Git 版本和用户配置的兼容稳定性"
+      ],
+      "required_slots": [
+        {
+          "id": "porcelain_stability_guarantee",
+          "slot_type": "applicability",
+          "description": "稳定性保证属于 porcelain v1：跨 Git 版本和用户配置不发生不兼容变化；不能把相同保证赋给普通 short。",
+          "acceptable": [
+            "porcelain 保证跨版本和用户配置稳定",
+            "脚本应使用 porcelain，其兼容稳定性区别于普通 short"
+          ],
+          "evidence_ids": [
+            "doc-696dbd84dd2e"
+          ]
+        }
+      ],
+      "allowed_extras": [
+        "porcelain 不使用 color.status 配置，输出始终无颜色。",
+        "porcelain 路径始终相对仓库根目录。",
+        "可补充 -z 格式用于机器解析。"
+      ],
+      "critical_errors": [
+        "保证普通 short 格式也不受用户配置影响且跨 Git 版本保持同等兼容性。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-696dbd84dd2e",
+          "quote": "Version 1 porcelain format is similar to the short format, but is guaranteed\nnot to change in a backwards-incompatible way between Git versions or\nbased on user configuration.",
+          "source_url": "https://git-scm.com/docs/git-status#_porcelain_format_version_1",
+          "source_title": "Git status / Porcelain Format Version 1"
+        }
+      ]
+    },
+    {
+      "id": "dev-03",
+      "scenario_id": "pip-upload-time-index-metadata",
+      "category": "开发集",
+      "question": "在支持 --uploaded-prior-to 的 pip 中，用这个选项从远程包索引按上传时间筛选时，索引必须提供什么元数据？简短答案只写所需元数据，并说明缺失时如何处理。",
+      "answer_type": "text",
+      "reference_answers": [
+        "上传时间元数据",
+        "upload-time metadata"
+      ],
+      "required_slots": [
+        {
+          "id": "missing_metadata_fails",
+          "description": "远程索引缺少文件上传时间元数据时 pip 立即报错。",
+          "acceptable": [
+            "缺少上传时间元数据则报错",
+            "fail immediately if upload-time metadata is missing"
+          ],
+          "evidence_ids": [
+            "doc-0642e793d0b5"
+          ],
+          "slot_type": "prerequisite"
+        }
+      ],
+      "allowed_extras": [
+        "该过滤不适用于本地文件或 VCS requirements。"
+      ],
+      "critical_errors": [
+        "称索引缺少上传时间时会静默忽略过滤并继续。"
+      ],
+      "relevant_evidence": [
+        {
+          "passage_id": "doc-0642e793d0b5",
+          "quote": "This option requires package indexes that provide upload-time metadata\n(such as PyPI). If the index does not provide upload-time metadata for a\npackage file, pip will fail immediately with an error message indicating\nthat upload-time metadata is required when using --uploaded-prior-to .",
+          "source_url": "https://pip.pypa.io/en/stable/user_guide/#filtering-by-upload-time",
+          "source_title": "pip User Guide / Filtering by Upload Time"
+        }
+      ]
+    }
+  ]
+}

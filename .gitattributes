@@ -1,1 +1,4 @@
 *.sh text eol=lf
+# Frozen annotations keep their original bytes and checksums.
+data/condition_eval/*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+data/retrieval_eval_v2/*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

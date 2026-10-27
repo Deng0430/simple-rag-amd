@@ -1,0 +1,228 @@
+{
+  "split": "regression",
+  "manifest_sha256": "3306be155b98952498caa065ea8b4733dbf0cb1bc642bf96d7dba6a5e6db7940",
+  "groups": {
+    "D": {
+      "n": 20,
+      "em": 0.4,
+      "token_f1": 0.5207411350889817,
+      "annotated_hit_at_3": 0.35,
+      "annotated_mrr_at_3": 0.3,
+      "annotated_slot_quote_coverage": 0.35,
+      "mean_planned_input_tokens": 793.55,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    },
+    "H": {
+      "n": 20,
+      "em": 0.4,
+      "token_f1": 0.5268920167641395,
+      "annotated_hit_at_3": 0.4,
+      "annotated_mrr_at_3": 0.3,
+      "annotated_slot_quote_coverage": 0.4,
+      "mean_planned_input_tokens": 998.1,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    },
+    "X": {
+      "n": 20,
+      "em": 0.45,
+      "token_f1": 0.5715616531165312,
+      "annotated_hit_at_3": 0.4,
+      "annotated_mrr_at_3": 0.3,
+      "annotated_slot_quote_coverage": 0.6,
+      "mean_planned_input_tokens": 1495.85,
+      "mean_extra_passages": 3.35,
+      "format_failures": 1,
+      "non_ok": 0,
+      "truncated": 1,
+      "reused_positions": 0
+    }
+  },
+  "paired": {
+    "H_minus_D": {
+      "n": 20,
+      "identical_prompts": 0,
+      "em": {
+        "mean_delta": 0,
+        "improved": 1,
+        "worsened": 1,
+        "tied": 18
+      },
+      "token_f1": {
+        "mean_delta": 0.006150881675157842,
+        "improved": 4,
+        "worsened": 6,
+        "tied": 10
+      }
+    },
+    "X_minus_H": {
+      "n": 20,
+      "identical_prompts": 0,
+      "em": {
+        "mean_delta": 0.05,
+        "improved": 3,
+        "worsened": 2,
+        "tied": 15
+      },
+      "token_f1": {
+        "mean_delta": 0.044669636352391635,
+        "improved": 6,
+        "worsened": 5,
+        "tied": 9
+      }
+    }
+  },
+  "planned_positions": 60,
+  "unique_prompt_conditions": 60,
+  "actual_attempts": 62,
+  "reused_positions": 0,
+  "actual_completed_attempts": 60,
+  "actual_request_seconds_sum": 234.00555130000794,
+  "human_review_completed": false,
+  "coverage_note": "Presence of frozen annotated source quotes, not exhaustive semantic evidence recall.",
+  "latency_note": "Shared identical responses are not independent timing measurements; no per-method speed claim.",
+  "reviewed_answer_groups": {
+    "D": {
+      "n": 20,
+      "em": 0.4,
+      "token_f1": 0.5207411350889817,
+      "annotated_hit_at_3": 0.35,
+      "annotated_mrr_at_3": 0.3,
+      "annotated_slot_quote_coverage": 0.35,
+      "mean_planned_input_tokens": 793.55,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    },
+    "H": {
+      "n": 20,
+      "em": 0.4,
+      "token_f1": 0.5268920167641395,
+      "annotated_hit_at_3": 0.4,
+      "annotated_mrr_at_3": 0.3,
+      "annotated_slot_quote_coverage": 0.4,
+      "mean_planned_input_tokens": 998.1,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    },
+    "X": {
+      "n": 20,
+      "em": 0.45,
+      "token_f1": 0.5715616531165312,
+      "annotated_hit_at_3": 0.4,
+      "annotated_mrr_at_3": 0.3,
+      "annotated_slot_quote_coverage": 0.6,
+      "mean_planned_input_tokens": 1495.85,
+      "mean_extra_passages": 3.35,
+      "format_failures": 1,
+      "non_ok": 0,
+      "truncated": 1,
+      "reused_positions": 0
+    }
+  },
+  "reviewed_pairs": {
+    "H_minus_D": {
+      "n": 20,
+      "identical_prompts": 0,
+      "em": {
+        "mean_delta": 0.0,
+        "improved": 1,
+        "worsened": 1,
+        "tied": 18
+      },
+      "token_f1": {
+        "mean_delta": 0.006150881675157842,
+        "improved": 4,
+        "worsened": 6,
+        "tied": 10
+      }
+    },
+    "X_minus_H": {
+      "n": 20,
+      "identical_prompts": 0,
+      "em": {
+        "mean_delta": 0.05,
+        "improved": 3,
+        "worsened": 2,
+        "tied": 15
+      },
+      "token_f1": {
+        "mean_delta": 0.044669636352391635,
+        "improved": 6,
+        "worsened": 5,
+        "tied": 9
+      }
+    }
+  },
+  "slot_reviews": {
+    "D": {
+      "review_type": "ai_assisted",
+      "reviewed_count": 20,
+      "tp": 9,
+      "fp": 13,
+      "fn": 11,
+      "slot_precision": 0.4090909090909091,
+      "slot_recall": 0.45,
+      "slot_f1": 0.42857142857142855,
+      "critical_error_reviewed_count": 20,
+      "critical_error_count": 3,
+      "critical_error_rate": 0.15,
+      "acceptable_reviewed_count": 20,
+      "acceptable_count": 8,
+      "acceptable_rate": 0.4,
+      "refusal_reviewed_count": 20,
+      "refusal_count": 1,
+      "refusal_rate": 0.05
+    },
+    "H": {
+      "review_type": "ai_assisted",
+      "reviewed_count": 20,
+      "tp": 8,
+      "fp": 14,
+      "fn": 12,
+      "slot_precision": 0.36363636363636365,
+      "slot_recall": 0.4,
+      "slot_f1": 0.38095238095238093,
+      "critical_error_reviewed_count": 20,
+      "critical_error_count": 2,
+      "critical_error_rate": 0.1,
+      "acceptable_reviewed_count": 20,
+      "acceptable_count": 8,
+      "acceptable_rate": 0.4,
+      "refusal_reviewed_count": 20,
+      "refusal_count": 0,
+      "refusal_rate": 0.0
+    },
+    "X": {
+      "review_type": "ai_assisted",
+      "reviewed_count": 20,
+      "tp": 12,
+      "fp": 14,
+      "fn": 8,
+      "slot_precision": 0.46153846153846156,
+      "slot_recall": 0.6,
+      "slot_f1": 0.5217391304347826,
+      "critical_error_reviewed_count": 20,
+      "critical_error_count": 2,
+      "critical_error_rate": 0.1,
+      "acceptable_reviewed_count": 20,
+      "acceptable_count": 11,
+      "acceptable_rate": 0.55,
+      "refusal_reviewed_count": 20,
+      "refusal_count": 0,
+      "refusal_rate": 0.0
+    }
+  }
+}

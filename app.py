@@ -7,7 +7,8 @@ from pathlib import Path
 
 import streamlit as st
 
-from rag import DEFAULT_MODEL, Generator, environment, export_csv, run_query
+from rag import (DEFAULT_MODEL, DEFAULT_LOCAL_MODEL, DEFAULT_OLLAMA_URL,
+                 create_generator, environment, export_csv, ollama_status, run_query)
 from knowledge import CORPUS, load_knowledge, signature
 from retrievers import LABELS, create_retriever
 
@@ -50,8 +51,13 @@ def retrieval_resource(data_revision, method, min_score):
 
 
 @st.cache_resource(max_entries=1)
-def model_resource(model_id):
-    return Generator(model_id)
+def model_resource(backend, model_id, base_url, num_ctx):
+    return create_generator(backend, model_id, base_url=base_url, num_ctx=num_ctx)
+
+
+@st.cache_data(ttl=10)
+def local_model_status(base_url):
+    return ollama_status(base_url)
 
 
 @st.cache_data(ttl=60)
@@ -125,7 +131,13 @@ def show_result(result, *, paired=False):
         if result.get("reference_answers"):
             st.write("核对要点：" + result["reference_answers"])
             st.caption("参考指南已检索到" if result["reference_passage_retrieved"] else "未检索到参考指南")
-        st.caption("计时不含首次下载、加载、预热和网页渲染。仅检索时不生成答案、不计模型 token。")
+        if result.get("backend") == "ollama":
+            st.caption(f"生成模型：{result['model']} / Ollama / {result.get('model_quantization', '未知量化')}")
+            st.caption("请求计时包含本次服务调用；首次预热单列。模型重新加载时，加载耗时会包含在请求内。")
+            if result.get("load_seconds") is not None:
+                st.caption(f"本次服务报告加载耗时：{result['load_seconds']:.3f} s；结束原因：{result.get('done_reason', '未知')}")
+        else:
+            st.caption("计时不含首次下载、加载、预热和网页渲染。仅检索时不生成答案、不计模型 token。")
 
 
 data_revision = signature()
@@ -140,25 +152,55 @@ with st.sidebar:
         '<div><div class="aup-brand-title">AUP 开发助手</div>'
         '<div class="aup-brand-subtitle">云端入门，有据可查</div></div></div>'
     )
+    with st.expander("模型与运行环境", icon=":material/settings:"):
+        backends = {"transformers": "AUP / Transformers", "ollama": "本地 / Ollama"}
+        backend = st.selectbox("模型运行方式", list(backends), format_func=backends.get,
+                               index=1 if os.getenv("RAG_BACKEND") == "ollama" else 0,
+                               key="generation-backend", on_change=reset_results)
+        default_model = DEFAULT_LOCAL_MODEL if backend == "ollama" else DEFAULT_MODEL
+        if backend == os.getenv("RAG_BACKEND", "transformers"):
+            default_model = os.getenv("MODEL_ID", default_model)
+        model_id = st.text_input("生成模型", value=default_model,
+                                 key="model-" + backend, on_change=reset_results)
+        base_url = DEFAULT_OLLAMA_URL
+        num_ctx = 8192
+        local_status = None
+        if backend == "ollama":
+            base_url = st.text_input("Ollama 服务地址", value=os.getenv("OLLAMA_BASE_URL", DEFAULT_OLLAMA_URL),
+                                     on_change=reset_results)
+            num_ctx = int(st.number_input("上下文窗口（token）", min_value=512, max_value=32768,
+                                          value=8192, step=512, on_change=reset_results))
+            local_status = local_model_status(base_url)
+            if st.button("刷新模型状态"):
+                local_model_status.clear()
+                st.rerun()
+            st.caption("使用 Ollama 已安装的模型；首次问答会加载并预热。")
+            st.json(local_status)
+        st.caption("以下是网页 Python 环境；Ollama 在独立进程中运行。" if backend == "ollama" else "当前 Python 环境")
+        st.json(env)
+    if backend == "ollama":
+        model_names = {item["name"] for item in local_status.get("models", [])}
+        generation_available = local_status["available"] and model_id.strip() in model_names
+        status_title = "本地模型已就绪" if generation_available else "本地模型待连接"
+        status_detail = (model_id.strip() + " / Ollama") if generation_available else (
+            local_status.get("error") or "Ollama 中未找到该模型，请检查名称。")
+    else:
+        generation_available = gpu_available
+        status_title = "GPU 已就绪" if gpu_available else "资料检索已就绪"
+        status_detail = env["gpu"] if gpu_available else "当前 Python 环境未检测到 GPU，可使用检索预览或本地 Ollama。"
     st.html('<div class="sidebar-label">回答方式</div>')
-    mode = st.radio("回答方式", ["仅检索预览", "模型问答"], index=1 if gpu_available else 0,
+    mode = st.radio("回答方式", ["仅检索预览", "模型问答"], index=1 if generation_available else 0,
                     key="mode", label_visibility="collapsed", on_change=reset_results)
     st.caption("检索预览直接查阅指南；模型问答会根据指南整理操作建议。")
-    status_title = "GPU 已就绪" if gpu_available else "资料检索已就绪"
-    status_detail = escape(env["gpu"]) if gpu_available else "当前环境未检测到 GPU，可使用检索预览。"
     st.html(f'<div class="runtime-status"><strong><span class="status-dot"></span>{status_title}</strong>'
-            f'<small>{status_detail}</small></div>')
-    if mode == "模型问答" and not gpu_available:
-        st.info("模型问答需要 GPU。请在 AUP 的 GPU 服务器启动本项目，或切回检索预览。")
+            f'<small>{escape(status_detail)}</small></div>')
+    if mode == "模型问答" and not generation_available:
+        st.info("请检查上方的模型运行方式及服务状态，也可以切回检索预览。")
     st.html('<div class="sidebar-label">可以查阅的内容</div>')
     st.html("".join(
         f'<div class="sidebar-topic">{icon(symbol, 18)}<span>{label}</span></div>'
         for symbol, label in [("terminal", "Python 与 GPU 环境"), ("globe", "启动网页与端口访问"), ("save", "保存文件与管理会话")]
     ))
-    with st.expander("模型与运行环境", icon=":material/settings:"):
-        model_id = st.text_input("生成模型", value=os.getenv("MODEL_ID", DEFAULT_MODEL),
-                                 disabled=mode == "仅检索预览", on_change=reset_results)
-        st.json(env)
     with st.expander("演示参数", icon=":material/tune:"):
         method = st.selectbox("检索器", list(LABELS), format_func=LABELS.get, key="retriever-method", on_change=reset_results)
         k = st.select_slider("Top-k：最多检索片段数", options=[1, 3, 6, 10], value=3, on_change=reset_results)
@@ -182,7 +224,8 @@ with st.sidebar:
                 st.error(str(exc))
     st.link_button("AUP 官方使用指南", OFFICIAL_GUIDE, icon=":material/open_in_new:", use_container_width=True)
 
-badge = "检索预览" if mode == "仅检索预览" else ("GPU 模型问答" if gpu_available else "模型问答 · 需要 GPU")
+badge = "检索预览" if mode == "仅检索预览" else (
+    ("本地模型问答" if backend == "ollama" else "GPU 模型问答") if generation_available else "模型问答 · 待连接")
 st.html(f'<div class="page-meta"><span class="page-meta-label">AMD AUP Learning Cloud 入门指南</span>'
         f'<span class="mode-badge">{icon("search" if mode == "仅检索预览" else "cloud", 15)}{badge}</span></div>')
 st.html('<h1>云端开发，下一步怎么做？</h1><p class="page-intro">从配置 Python 到打开网页，描述你遇到的问题，找到操作指南和回答依据。</p>')
@@ -202,7 +245,7 @@ with ask_tab:
                 single = st.form_submit_button(
                     "比较检索效果" if compare_retrievers else ("获取操作建议" if mode == "模型问答" else "查找相关资料"),
                     type="primary", icon=":material/search:", use_container_width=True,
-                    disabled=mode == "模型问答" and not gpu_available and not compare_retrievers,
+                    disabled=mode == "模型问答" and not generation_available and not compare_retrievers,
                 )
 
     if single:
@@ -223,7 +266,7 @@ with ask_tab:
                 retriever = active_retrievers[method] if not compare_retrievers else None
                 if mode == "模型问答" and not compare_retrievers and retriever.search(question, k):
                     with st.spinner("正在加载并预热模型，首次运行需要一些时间…"):
-                        generator = model_resource(model_id.strip())
+                        generator = model_resource(backend, model_id.strip(), base_url, num_ctx)
                 with st.spinner("正在查阅指南…"):
                     results = []
                     selected = next((q for q in data["questions"] if q["question"] == question.strip()), None)

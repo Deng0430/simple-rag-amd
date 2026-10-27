@@ -1,0 +1,228 @@
+{
+  "split": "holdout",
+  "manifest_sha256": "e2db322c46d8c5e6e6357d5868929edc118539354be3fdc5167a3c8fc43b6c50",
+  "groups": {
+    "D": {
+      "n": 12,
+      "em": 0.3333333333333333,
+      "token_f1": 0.5763888888888888,
+      "annotated_hit_at_3": 0.08333333333333333,
+      "annotated_mrr_at_3": 0.08333333333333333,
+      "annotated_slot_quote_coverage": 0.08333333333333333,
+      "mean_planned_input_tokens": 712.1666666666666,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 1
+    },
+    "H": {
+      "n": 12,
+      "em": 0.3333333333333333,
+      "token_f1": 0.6113215488215488,
+      "annotated_hit_at_3": 0.08333333333333333,
+      "annotated_mrr_at_3": 0.08333333333333333,
+      "annotated_slot_quote_coverage": 0.08333333333333333,
+      "mean_planned_input_tokens": 1004.5,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    },
+    "X": {
+      "n": 12,
+      "em": 0.3333333333333333,
+      "token_f1": 0.6159511784511784,
+      "annotated_hit_at_3": 0.08333333333333333,
+      "annotated_mrr_at_3": 0.08333333333333333,
+      "annotated_slot_quote_coverage": 0.16666666666666666,
+      "mean_planned_input_tokens": 1503.1666666666667,
+      "mean_extra_passages": 4.833333333333333,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    }
+  },
+  "paired": {
+    "H_minus_D": {
+      "n": 12,
+      "identical_prompts": 1,
+      "em": {
+        "mean_delta": 0,
+        "improved": 0,
+        "worsened": 0,
+        "tied": 12
+      },
+      "token_f1": {
+        "mean_delta": 0.03493265993265993,
+        "improved": 2,
+        "worsened": 1,
+        "tied": 9
+      }
+    },
+    "X_minus_H": {
+      "n": 12,
+      "identical_prompts": 0,
+      "em": {
+        "mean_delta": 0,
+        "improved": 1,
+        "worsened": 1,
+        "tied": 10
+      },
+      "token_f1": {
+        "mean_delta": 0.004629629629629627,
+        "improved": 2,
+        "worsened": 2,
+        "tied": 8
+      }
+    }
+  },
+  "planned_positions": 36,
+  "unique_prompt_conditions": 35,
+  "actual_attempts": 35,
+  "reused_positions": 1,
+  "actual_completed_attempts": 35,
+  "actual_request_seconds_sum": 131.02142350000213,
+  "human_review_completed": false,
+  "coverage_note": "Presence of frozen annotated source quotes, not exhaustive semantic evidence recall.",
+  "latency_note": "Shared identical responses are not independent timing measurements; no per-method speed claim.",
+  "reviewed_answer_groups": {
+    "D": {
+      "n": 12,
+      "em": 0.3333333333333333,
+      "token_f1": 0.5763888888888888,
+      "annotated_hit_at_3": 0.08333333333333333,
+      "annotated_mrr_at_3": 0.08333333333333333,
+      "annotated_slot_quote_coverage": 0.08333333333333333,
+      "mean_planned_input_tokens": 712.1666666666666,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 1
+    },
+    "H": {
+      "n": 12,
+      "em": 0.3333333333333333,
+      "token_f1": 0.6113215488215488,
+      "annotated_hit_at_3": 0.08333333333333333,
+      "annotated_mrr_at_3": 0.08333333333333333,
+      "annotated_slot_quote_coverage": 0.08333333333333333,
+      "mean_planned_input_tokens": 1004.5,
+      "mean_extra_passages": 0,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    },
+    "X": {
+      "n": 12,
+      "em": 0.3333333333333333,
+      "token_f1": 0.6159511784511784,
+      "annotated_hit_at_3": 0.08333333333333333,
+      "annotated_mrr_at_3": 0.08333333333333333,
+      "annotated_slot_quote_coverage": 0.16666666666666666,
+      "mean_planned_input_tokens": 1503.1666666666667,
+      "mean_extra_passages": 4.833333333333333,
+      "format_failures": 0,
+      "non_ok": 0,
+      "truncated": 0,
+      "reused_positions": 0
+    }
+  },
+  "reviewed_pairs": {
+    "H_minus_D": {
+      "n": 12,
+      "identical_prompts": 1,
+      "em": {
+        "mean_delta": 0.0,
+        "improved": 0,
+        "worsened": 0,
+        "tied": 12
+      },
+      "token_f1": {
+        "mean_delta": 0.03493265993265993,
+        "improved": 2,
+        "worsened": 1,
+        "tied": 9
+      }
+    },
+    "X_minus_H": {
+      "n": 12,
+      "identical_prompts": 0,
+      "em": {
+        "mean_delta": 0,
+        "improved": 1,
+        "worsened": 1,
+        "tied": 10
+      },
+      "token_f1": {
+        "mean_delta": 0.004629629629629627,
+        "improved": 2,
+        "worsened": 2,
+        "tied": 8
+      }
+    }
+  },
+  "slot_reviews": {
+    "D": {
+      "review_type": "ai_assisted",
+      "reviewed_count": 12,
+      "tp": 2,
+      "fp": 11,
+      "fn": 10,
+      "slot_precision": 0.15384615384615385,
+      "slot_recall": 0.16666666666666666,
+      "slot_f1": 0.16,
+      "critical_error_reviewed_count": 12,
+      "critical_error_count": 5,
+      "critical_error_rate": 0.4166666666666667,
+      "acceptable_reviewed_count": 12,
+      "acceptable_count": 2,
+      "acceptable_rate": 0.16666666666666666,
+      "refusal_reviewed_count": 12,
+      "refusal_count": 0,
+      "refusal_rate": 0.0
+    },
+    "H": {
+      "review_type": "ai_assisted",
+      "reviewed_count": 12,
+      "tp": 2,
+      "fp": 13,
+      "fn": 10,
+      "slot_precision": 0.13333333333333333,
+      "slot_recall": 0.16666666666666666,
+      "slot_f1": 0.14814814814814814,
+      "critical_error_reviewed_count": 12,
+      "critical_error_count": 4,
+      "critical_error_rate": 0.3333333333333333,
+      "acceptable_reviewed_count": 12,
+      "acceptable_count": 1,
+      "acceptable_rate": 0.08333333333333333,
+      "refusal_reviewed_count": 12,
+      "refusal_count": 0,
+      "refusal_rate": 0.0
+    },
+    "X": {
+      "review_type": "ai_assisted",
+      "reviewed_count": 12,
+      "tp": 2,
+      "fp": 15,
+      "fn": 10,
+      "slot_precision": 0.11764705882352941,
+      "slot_recall": 0.16666666666666666,
+      "slot_f1": 0.13793103448275862,
+      "critical_error_reviewed_count": 12,
+      "critical_error_count": 6,
+      "critical_error_rate": 0.5,
+      "acceptable_reviewed_count": 12,
+      "acceptable_count": 2,
+      "acceptable_rate": 0.16666666666666666,
+      "refusal_reviewed_count": 12,
+      "refusal_count": 0,
+      "refusal_rate": 0.0
+    }
+  }
+}

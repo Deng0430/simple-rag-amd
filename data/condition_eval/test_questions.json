@@ -1,0 +1,162 @@
+{
+  "metadata": {
+    "dataset_version": "condition-eval-v1",
+    "created_on": "2026-10-27",
+    "annotation_status": "AI-assisted source-grounded draft; not independently human-validated",
+    "source_corpus_sha256": "84e09f7dd713a798bcc101cd83741cf1c360bf22f7c539a4d4f5d710f740f5d7",
+    "selection": "20 distinct document-supported tasks, 5 per category; no model predictions or group outcomes inspected during selection",
+    "excluded_development_scenarios": [
+      "aup-q01",
+      "aup-q02",
+      "aup-q03",
+      "aup-q04",
+      "aup-q05",
+      "aup-q06"
+    ],
+    "gold_access": "References and slot labels are scoring-only and must not be exposed to retrieval, packing, or generation.",
+    "construct": "Completeness of operational conditions and key constraints; slot_type separates prerequisites, applicability, operational constraints, and behavior explanations. Behavior explanations are not claimed to be pure execution prerequisites.",
+    "slot_scoring_context": "Judge the complete answer together with the stated question context. A correct command or path that implements the condition counts; repeating an already-given environment is not required. Acceptable strings are semantic examples, not mandatory keyword patterns."
+  },
+  "questions": [
+    {
+      "id": "ce-01",
+      "scenario_id": "git-clone-local-source-syntax",
+      "category": "路径与工作目录",
+      "question": "git clone 要使用 --local 的本地优化，源仓库应写成本地路径还是 URL？简短答案只写地址形式，并说明使用 URL 时 --local 会怎样。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-02",
+      "scenario_id": "streamlit-config-working-directory",
+      "category": "路径与工作目录",
+      "question": "在 Linux 的 /work 目录执行 streamlit run /other/app.py，只想为本次工作目录设置 Streamlit 配置。配置文件应放在哪里？简短答案只写完整路径，并说明路径依据。",
+      "answer_type": "path"
+    },
+    {
+      "id": "ce-03",
+      "scenario_id": "hf-download-cache-file-mutation",
+      "category": "路径与工作目录",
+      "question": "hf_hub_download 使用默认缓存下载后返回一个本地文件路径，是否可以直接在这个路径上修改下载文件？简短答案只写“可以”或“不可以”，说明该路径的性质及原因。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-04",
+      "scenario_id": "venv-relocation",
+      "category": "路径与工作目录",
+      "question": "Python 虚拟环境的父目录被移动到新位置后，原环境里的脚本还能保证正常工作吗？推荐的处理是什么？简短答案只写推荐处理，解释导致问题的路径条件。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-05",
+      "scenario_id": "hf-cache-environment-precedence",
+      "category": "路径与工作目录",
+      "question": "在 Linux 上已显式设置 HF_HOME，之后只修改 XDG_CACHE_HOME。Hugging Face 的默认 home 路径仍以哪个变量为准？简短答案只写优先变量，解释 XDG_CACHE_HOME 生效的前提。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-06",
+      "scenario_id": "pip-check-installed-dependencies",
+      "category": "Python与依赖环境",
+      "question": "在 Unix/macOS 上，python 指向当前使用的解释器。想检查其环境中已安装包是否缺少依赖或依赖版本不兼容，应运行什么命令？简短答案写命令，说明发现这两类问题时的退出码。",
+      "answer_type": "command"
+    },
+    {
+      "id": "ce-07",
+      "scenario_id": "pip-minimal-dependency-upgrade",
+      "category": "Python与依赖环境",
+      "question": "使用 pip install --upgrade 升级直接指定的包时，希望间接依赖仅在不满足新要求时才升级，应该选择哪种 upgrade strategy？简短答案只写策略值，并说明升级条件。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-08",
+      "scenario_id": "pip-user-install-isolated-venv",
+      "category": "Python与依赖环境",
+      "question": "当前在默认隔离的 virtualenv 中，能否用 pip install --user 安装到用户目录并供此环境使用？简短答案只写“可以”或“不可以”，解释限制条件。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-09",
+      "scenario_id": "pip-offline-wheels",
+      "category": "Python与依赖环境",
+      "question": "在 Linux 环境中，当前目录的 requirements.txt 可读，所需包及依赖的 wheel 已全部准备在 /local/wheels。要只从该目录安装、完全不访问 PyPI，命令是什么？简短答案写命令，并说明离线安装的资料前提。",
+      "answer_type": "command"
+    },
+    {
+      "id": "ce-10",
+      "scenario_id": "pip-isolated-config",
+      "category": "Python与依赖环境",
+      "question": "排查 pip 的环境变量和用户配置文件干扰时，哪个选项可使 pip 忽略这两类配置？简短答案只写选项名，并说明它忽略的范围。",
+      "answer_type": "command"
+    },
+    {
+      "id": "ce-11",
+      "scenario_id": "rocm-tf32-support",
+      "category": "版本与设备条件",
+      "question": "依据已导入的 PyTorch 2.9 HIP 文档，能否在 ROCm 后端启用 TensorFloat-32（TF32）？简短答案只写“支持”或“不支持”，说明适用后端。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-12",
+      "scenario_id": "rocm-ck-sdpa-build",
+      "category": "版本与设备条件",
+      "question": "在 ROCm 上调用 setROCmFAPreferredBackend 选择 ck 后仍回退默认 SDPA 后端。应检查构建 PyTorch 时哪个环境变量是否设为 1？简短答案写变量赋值，并说明它应在哪个阶段设置。",
+      "answer_type": "command"
+    },
+    {
+      "id": "ce-13",
+      "scenario_id": "python312-venv-setuptools",
+      "category": "版本与设备条件",
+      "question": "Python 3 的 venv 在较新版本中取消了一个核心依赖。不能再假定哪个包会自动存在？简短答案只写包名，说明这一变化从哪个 Python 版本开始。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-14",
+      "scenario_id": "hf-pinned-commit-revision",
+      "category": "版本与设备条件",
+      "question": "为了复现固定版本，用 hf_hub_download 的 revision 指定 commit 时，可以只写 7 位短哈希吗？简短答案写应使用的哈希形式，并说明限制。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-15",
+      "scenario_id": "git-shallow-all-branches",
+      "category": "版本与设备条件",
+      "question": "git clone 已使用 --depth 限制历史深度，但还希望取所有分支尖端附近的历史，需要额外加哪个选项？简短答案只写选项名，并说明 --depth 的默认分支行为。",
+      "answer_type": "command"
+    },
+    {
+      "id": "ce-16",
+      "scenario_id": "vscode-sequential-background-dependency",
+      "category": "网页服务与运行配置",
+      "question": "VS Code 的 dependsOn 使用 dependsOrder: sequence，依赖里包含持续运行的 watch 任务。为了知道何时可继续下一个依赖，该 watch 任务还必须配置什么？简短答案写配置机制，并说明它要识别什么状态。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-17",
+      "scenario_id": "streamlit-external-watch-directory",
+      "category": "网页服务与运行配置",
+      "question": "Streamlit 要额外监视当前工作目录之外的一个目录，server.folderWatchList 中路径必须采用什么形式？简短答案只写路径形式，并说明该配置的用途。",
+      "answer_type": "text"
+    },
+    {
+      "id": "ce-18",
+      "scenario_id": "hf-offline-download-cache-prerequisite",
+      "category": "网页服务与运行配置",
+      "question": "使用 huggingface_hub 时，希望只读本地缓存并且不向 Hub 发出 HTTP 请求，应设置哪个环境变量？简短答案写赋值，并说明缓存不存在时会怎样。",
+      "answer_type": "command"
+    },
+    {
+      "id": "ce-19",
+      "scenario_id": "pip-require-active-venv",
+      "category": "网页服务与运行配置",
+      "question": "希望 pip 只允许在虚拟环境中运行，以免误操作全局环境。应该使用哪个通用选项？简短答案写选项，并说明不在虚拟环境时的行为。",
+      "answer_type": "command"
+    },
+    {
+      "id": "ce-20",
+      "scenario_id": "hf-token-env-precedence",
+      "category": "网页服务与运行配置",
+      "question": "机器已经保存了 Hugging Face 访问令牌，同时又显式设置 HF_TOKEN 环境变量，认证优先使用哪个？简短答案只写来源，并说明覆盖关系，不要提供或猜测任何真实令牌。",
+      "answer_type": "text"
+    }
+  ]
+}
