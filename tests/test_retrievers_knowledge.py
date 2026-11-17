@@ -1,4 +1,5 @@
 import csv
+import copy
 import io
 import json
 from pathlib import Path
@@ -75,6 +76,76 @@ class RetrievalAndCorpusTests(unittest.TestCase):
         self.assertFalse(any(p["id"].startswith("aup-") for p in data["passages"]))
         self.assertTrue(all(set(q) == {"id", "question"} for q in data["questions"]))
 
+
+
+class CsvExportTests(unittest.TestCase):
+    def test_evidence_round_trip_preserves_citation_order_text_and_all_sources(self):
+        passages = [
+            dict(id="first", title='指南：Python, "环境"', score=0.123456789,
+                 scope="当前项目目录", text='第一行, 含逗号和引号 "原文"\r\n```python\nprint("你好")\n```',
+                 sources=[
+                     dict(title="官方说明", url="https://example.org/guide?a=1&b=2#venv",
+                          kind="官方文档", checked_on="2026-11-17"),
+                     dict(title="项目说明", url="https://example.org/project", kind="项目说明"),
+                 ], document_id="guide", rrf_contributions={"dense": 0.01, "bm25": 0.02}),
+            dict(id="second", title="补充说明", score=0.02, text="证据原文\n" * 100,
+                 sources=[dict(title="另一来源", url="https://example.org/second")]),
+        ]
+        result = dict(question='应该用哪个命令, 为什么？', answer='先检查版本。\n\n[P1]',
+                      raw_answer='{"short_answer":"先检查版本"}', strategy="X", model="test-model",
+                      input_tokens=100, output_tokens=20, total_seconds=1.23,
+                      recorded_at="2026-11-17T08:00:00+00:00", passages=passages)
+        original = copy.deepcopy(result)
+        exported = export_csv([result])
+        self.assertTrue(exported.startswith(b"\xef\xbb\xbf"))
+        rows = list(csv.DictReader(io.StringIO(exported.decode("utf-8-sig"), newline="")))
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        for key, value in result.items():
+            if key != "passages":
+                self.assertEqual(row[key], str(value))
+        self.assertEqual(row["passage_ids"], "first;second")
+        self.assertEqual(row["passage_scores"], "0.123457;0.020000")
+        snapshots = json.loads(row["passages_json"])
+        self.assertEqual([p["citation_id"] for p in snapshots], ["P1", "P2"])
+        for source, snapshot in zip(passages, snapshots):
+            self.assertEqual({k: v for k, v in snapshot.items() if k != "citation_id"}, source)
+            self.assertIn(source["text"], row["evidence_text"])
+            self.assertIn(source["title"], row["evidence_text"])
+            for reference in source["sources"]:
+                self.assertIn(reference["url"], row["evidence_text"])
+        self.assertLess(row["evidence_text"].index("[P1]"), row["evidence_text"].index("[P2]"))
+        self.assertEqual(result, original)
+
+    def test_preview_and_no_evidence_keep_blank_answers_and_tokens(self):
+        preview = dict(question="检查环境", mode="retrieval_preview", answer=None,
+                       input_tokens=None, output_tokens=None, passages=[
+                           dict(id="minimal", title="Guide", text="Use python3", score=1.0)])
+        empty = dict(preview, question="没有相关资料", passages=[], status="no_evidence")
+        rows = list(csv.DictReader(io.StringIO(export_csv([preview, empty]).decode("utf-8-sig"))))
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertEqual(row["answer"], "")
+            self.assertEqual(row["input_tokens"], "")
+            self.assertEqual(row["output_tokens"], "")
+        self.assertEqual(json.loads(rows[0]["passages_json"])[0]["text"], "Use python3")
+        self.assertEqual(rows[1]["passages_json"], "[]")
+        self.assertEqual(rows[1]["evidence_text"], "")
+        self.assertEqual(rows[1]["passage_ids"], "")
+
+    def test_failed_and_refused_answers_keep_raw_output_and_evidence(self):
+        passage = dict(id="source", title="Guide", text="Documented content.", score=0.5)
+        failed = dict(question="test", answer=None, status="format_error", raw_answer='{"short_answer":"截断',
+                      output_truncated=True, passages=[passage])
+        refused = dict(question="test", answer="资料不足", status="abstained",
+                       raw_answer='{"abstain":true}', passages=[passage])
+        rows = list(csv.DictReader(io.StringIO(export_csv([failed, refused]).decode("utf-8-sig"))))
+        for original, row in zip((failed, refused), rows):
+            self.assertEqual(row["raw_answer"], original["raw_answer"])
+            self.assertEqual(row["status"], original["status"])
+            self.assertEqual(json.loads(row["passages_json"])[0]["text"], passage["text"])
+        self.assertEqual(rows[0]["answer"], "")
+        self.assertEqual(rows[1]["answer"], "资料不足")
 
 
 if __name__ == "__main__":

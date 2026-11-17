@@ -386,12 +386,35 @@ def run_query(retriever: Retriever, question: str, k: int,
     return result
 
 
+def evidence_for_csv(passages: list[dict]) -> str:
+    """Readable evidence snapshot in the same order as the displayed citations."""
+    blocks = []
+    for number, passage in enumerate(passages, 1):
+        lines = [f"[P{number}] {passage.get('title', '')}",
+                 f"片段 ID：{passage['id']}", f"检索分数：{passage['score']}"]
+        if passage.get("scope"):
+            lines.append(f"适用范围：{passage['scope']}")
+        lines.extend(["原文：", passage.get("text", "")])
+        for source in passage.get("sources", []):
+            lines.append("来源：" + " | ".join(
+                str(source[key]) for key in ("title", "url", "kind", "checked_on")
+                if source.get(key)
+            ))
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
 def rows_for_csv(results: list[dict]) -> list[dict]:
     rows = []
     for result in results:
         row = {key: value for key, value in result.items() if key != "passages"}
         row["passage_ids"] = ";".join(p["id"] for p in result["passages"])
         row["passage_scores"] = ";".join(f"{p['score']:.6f}" for p in result["passages"])
+        row["evidence_text"] = evidence_for_csv(result["passages"])
+        row["passages_json"] = json.dumps([
+            dict(p, citation_id=f"P{number}")
+            for number, p in enumerate(result["passages"], 1)
+        ], ensure_ascii=False)
         rows.append(row)
     return rows
 

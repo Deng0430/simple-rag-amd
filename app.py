@@ -347,6 +347,7 @@ with ask_tab:
                     show_result(result, paired=len(results) > 1)
             st.download_button("下载本次结果 CSV", export_csv(results), file_name="aup_demo_results.csv",
                                mime="text/csv", icon=":material/download:")
+            st.caption("CSV 包含本次问题、回答、运行指标，以及各段检索证据的原文和来源，可下载后核对。")
 
 with guides_tab:
     st.html('<div class="library-heading"><h2>官方原文与项目说明</h2></div>')
