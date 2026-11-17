@@ -1,0 +1,28 @@
+{
+  "questions": [
+    {
+      "id": "aup-q01",
+      "question": "为什么终端提示 python: command not found？"
+    },
+    {
+      "id": "aup-q02",
+      "question": "创建虚拟环境提示缺少 ensurepip，怎么办？"
+    },
+    {
+      "id": "aup-q03",
+      "question": "Streamlit 启动了，但浏览器里网页打不开，应该用什么地址？"
+    },
+    {
+      "id": "aup-q04",
+      "question": "会话快到期了，代码和问答结果要怎么保存？"
+    },
+    {
+      "id": "aup-q05",
+      "question": "我用的是 AMD 显卡，为什么检查 GPU 却用 torch.cuda？"
+    },
+    {
+      "id": "aup-q06",
+      "question": "运行这个问答网页，应该选 CPU 还是 GPU 环境？"
+    }
+  ]
+}

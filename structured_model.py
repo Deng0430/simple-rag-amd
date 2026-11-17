@@ -1,4 +1,4 @@
-"""Pinned Qwen tokenizer and explicit ChatML for the condition experiment."""
+"""Pinned local Qwen tokenizer, ChatML and structured Ollama inference."""
 
 import hashlib
 import json
@@ -13,7 +13,7 @@ from rag import DEFAULT_LOCAL_MODEL, DEFAULT_OLLAMA_URL, _ollama_request, ollama
 TOKENIZER_REPO = "Qwen/Qwen2.5-3B-Instruct"
 TOKENIZER_REVISION = "aa8e72537993ba99e69dfaafa59ed015b17504d1"
 MODEL_DIGEST = "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b"
-CACHE = Path(__file__).parent / ".cache" / "condition_eval" / "tokenizer"
+CACHE = Path(__file__).parent / ".cache" / "generation" / "qwen25-tokenizer"
 SCHEMA = {
     "type": "object", "additionalProperties": False,
     "properties": {
@@ -64,7 +64,7 @@ class QwenTokenizer:
         manifest_path = self.folder / "manifest.json"
         if manifest_path.exists():
             if json.loads(manifest_path.read_text(encoding="utf-8")) != self.manifest:
-                raise ValueError("Tokenizer manifest changed; use a new experiment version.")
+                raise ValueError("Tokenizer manifest changed; verify the local tokenizer cache.")
         manifest_path.write_text(json.dumps(self.manifest, indent=2) + "\n", encoding="utf-8")
 
     def count(self, text):
@@ -72,14 +72,14 @@ class QwenTokenizer:
 
 
 def make_prompt(question, passages):
-    from condition_context import render_passages
+    from answer_protocol import render_passages
 
     user = f"资料：\n{render_passages(passages)}\n\n问题：{question}\n请按JSON格式作答。"
     return (f"<|im_start|>system\n{SYSTEM}<|im_end|>\n"
             f"<|im_start|>user\n{user}<|im_end|>\n<|im_start|>assistant\n")
 
 
-class ExperimentModel:
+class StructuredLocalModel:
     def __init__(self, tokenizer, base_url=DEFAULT_OLLAMA_URL, num_ctx=8192):
         self.base_url, self.num_ctx, self.tokenizer = base_url, num_ctx, tokenizer
         status = ollama_status(base_url)
@@ -114,7 +114,7 @@ class ExperimentModel:
 
     def validate_tokenizer(self):
         checks = []
-        for question in ("仅回复OK。", "说明命令 python3 -m venv .venv；不要执行。", "路径 /home/jovyan 和条件 if CUDA is available。"): 
+        for question in ("仅回复OK。", "说明命令 python3 -m venv .venv；不要执行。", "路径 /home/jovyan 和条件 if CUDA is available。"):
             prompt = (f"<|im_start|>system\n{SYSTEM}<|im_end|>\n"
                       f"<|im_start|>user\n{question}<|im_end|>\n<|im_start|>assistant\n")
             record = self.generate(prompt, max_new_tokens=2)
@@ -123,3 +123,23 @@ class ExperimentModel:
                 raise RuntimeError(f"Tokenizer mismatch: expected {record['expected_input_tokens']}, "
                                    f"received {record['raw_response'].get('prompt_eval_count')}")
         return checks
+
+
+class IsolatedLocalModel(StructuredLocalModel):
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.metadata['request_isolation']='unload qwen2.5:3b before each unique generation, same weights/prompt/schema/options'
+
+    def generate(self,prompt,max_new_tokens=512):
+        start=time.perf_counter()
+        reset=_ollama_request(self.base_url,'/api/generate',
+                             {'model':DEFAULT_LOCAL_MODEL,'keep_alive':0,'stream':False},timeout=60)
+        if reset.get('done') is not True:
+            raise RuntimeError('Model unload did not complete; refusing a potentially contaminated request.')
+        reset_seconds=time.perf_counter()-start
+        result=super().generate(prompt,max_new_tokens)
+        result['generation_request_seconds']=result['request_seconds']
+        result['reset_seconds']=reset_seconds
+        result['reset_response']=reset
+        result['request_seconds']=time.perf_counter()-start
+        return result

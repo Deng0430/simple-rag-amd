@@ -8,8 +8,8 @@ import re
 ROOT = Path(__file__).parent
 MANIFEST = ROOT / "data/source_manifest.json"
 CORPUS = ROOT / ".cache/knowledge/corpus.json"
-PROJECT_GUIDE = ROOT / "docs/project-usage.md"
-LEGACY_FAQ = ROOT / "data/archive/aup_faq_v2.json"
+PROJECT_GUIDE = ROOT / "data/project-usage.md"
+EXAMPLE_QUESTIONS = ROOT / "data/example_questions.json"
 
 
 def chunk_section(text, limit=1000):
@@ -62,23 +62,23 @@ def project_passages():
                 text=chunk, category="本项目说明", keywords=title, document_id="project-usage",
                 scope="本仓库运行方式；平台资源状态仍以账号页面为准。",
                 sources=[dict(title="本项目使用说明 / " + title,
-                              url="https://github.com/Deng0430/simple-rag-amd/blob/main/docs/project-usage.md",
+                              url="https://github.com/Deng0430/simple-rag-amd/blob/main/data/project-usage.md",
                               kind="项目说明", checked_on="2026-10-27")],
             ))
     return passages
 
 
 def signature():
-    return tuple(p.stat().st_mtime_ns if p.exists() else 0 for p in (CORPUS, PROJECT_GUIDE, MANIFEST))
+    return tuple(p.stat().st_mtime_ns if p.exists() else 0 for p in (CORPUS, PROJECT_GUIDE, MANIFEST, EXAMPLE_QUESTIONS))
 
 
 def load_knowledge():
     data = json.loads(CORPUS.read_text(encoding="utf-8")) if CORPUS.exists() else {
         "documents": [], "passages": [], "failures": [], "complete_aup": False,
     }
-    # Legacy questions are convenient shortcuts, but their guide texts are NOT indexed.
-    old = json.loads(LEGACY_FAQ.read_text(encoding="utf-8"))
-    questions = [{"id": q["id"], "question": q["question"]} for q in old["questions"][:6]]
+    # UI shortcuts contain questions only, with no gold answers or grading data.
+    examples = json.loads(EXAMPLE_QUESTIONS.read_text(encoding="utf-8"))
+    questions = [{"id": q["id"], "question": q["question"]} for q in examples["questions"]]
     passages = project_passages() + data["passages"]
     return dict(id="aup_documents_v1", title="AUP 官方与开发文档", passages=passages,
                 questions=questions, updated=data.get("built_at", "2026-10-16")[:10],

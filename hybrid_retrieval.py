@@ -1,8 +1,7 @@
 """Answer-blind dense/BM25 fusion and global evidence expansion.
 
-This v2 experiment does not change the frozen v1 neighbor experiment. No gold
-labels, question IDs, source-specific routing, condition keyword rules or model
-answers are read here. The only retrieval input is the supplied query string.
+No reference answers, question IDs or source-specific routing are used.
+The only retrieval input is the supplied query string.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ import math
 import time
 from typing import Callable
 
-from condition_context import render_passages
+from answer_protocol import render_passages
 from retrievers import BM25Retriever, DenseRetriever
 
 

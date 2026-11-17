@@ -10,7 +10,6 @@ from knowledge import chunk_section, load_knowledge
 from prepare_knowledge import extract_sections
 from rag import export_csv, run_query
 from retrievers import BM25Retriever, tokenize
-from summarize_results import summarize
 
 
 class RetrievalAndCorpusTests(unittest.TestCase):
@@ -76,9 +75,6 @@ class RetrievalAndCorpusTests(unittest.TestCase):
         self.assertFalse(any(p["id"].startswith("aup-") for p in data["passages"]))
         self.assertTrue(all(set(q) == {"id", "question"} for q in data["questions"]))
 
-    def test_generation_summary_does_not_mix_retrieval_algorithms(self):
-        with self.assertRaisesRegex(ValueError, "Mixed retrievers"):
-            summarize([dict(mode="model", retriever=method) for method in ("tfidf", "dense")])
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import unittest
 
-from condition_context import render_passages
+from answer_protocol import render_passages
 from hybrid_retrieval import HybridRetriever, build_contexts, reciprocal_rank_fusion
 
 

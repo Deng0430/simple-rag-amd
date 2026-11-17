@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 from rag import (DEFAULT_LOCAL_MODEL, OllamaGenerator, _ollama_request,
                  create_generator, ollama_status)
-from summarize_results import summarize
 
 
 def chat_response(**changes):
@@ -125,20 +124,6 @@ class LocalGeneratorTests(unittest.TestCase):
             create_generator()
         remote.assert_called_once_with("Qwen/Qwen3-4B-Instruct-2507")
 
-    def test_summary_accepts_unmeasured_memory_and_rejects_mixed_models(self):
-        row = dict(mode="model", retriever="dense", backend="ollama", model="qwen2.5:3b",
-                   model_digest="sha256:test", model_quantization="Q4_K_M", top_k="3",
-                   manual_quality="", total_seconds="1", generation_seconds="0.9",
-                   retrieval_seconds="0.1", input_tokens="42", output_tokens="8",
-                   torch_peak_allocated_gib="", reference_passage_retrieved="")
-        result = summarize([row])
-        self.assertIsNone(result["groups"]["3"]["max_torch_peak_allocated_gib"])
-        self.assertEqual(result["backend"], "ollama")
-        for change in (dict(model="another"), dict(backend="transformers"),
-                       dict(model_quantization="Q8_0"), dict(num_ctx="8192"),
-                       dict(model_digest="new-weights")):
-            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "Mixed models"):
-                summarize([row, dict(row, **change)])
 
 
 if __name__ == "__main__":

@@ -10,7 +10,11 @@ import streamlit as st
 from rag import (DEFAULT_MODEL, DEFAULT_LOCAL_MODEL, DEFAULT_OLLAMA_URL,
                  create_generator, environment, export_csv, ollama_status, run_query)
 from knowledge import CORPUS, load_knowledge, signature
-from retrievers import LABELS, create_retriever
+from retrievers import LABELS as RETRIEVER_LABELS, create_retriever
+from hybrid_retrieval import HybridRetriever
+from hybrid_runtime import STRATEGIES, RESULT_LABELS, PlanRuntime, run_plan_query
+
+LABELS = {**RETRIEVER_LABELS, **RESULT_LABELS}
 
 OFFICIAL_GUIDE = "https://amdresearch.github.io/aup-learning-cloud/user-guide/platform-basics.html"
 REPOSITORY = "https://github.com/Deng0430/simple-rag-amd"
@@ -53,6 +57,16 @@ def retrieval_resource(data_revision, method, min_score):
 @st.cache_resource(max_entries=1)
 def model_resource(backend, model_id, base_url, num_ctx):
     return create_generator(backend, model_id, base_url=base_url, num_ctx=num_ctx)
+
+
+@st.cache_resource(max_entries=2)
+def hybrid_resource(data_revision):
+    return HybridRetriever(resources(data_revision)["passages"])
+
+
+@st.cache_resource(max_entries=2)
+def plan_runtime(backend, model_id, base_url, num_ctx):
+    return PlanRuntime(backend, model_id, base_url, num_ctx)
 
 
 @st.cache_data(ttl=10)
@@ -101,6 +115,9 @@ def show_result(result, *, paired=False):
     if paired:
         st.markdown(f"### {LABELS[result['retriever']].split(' · ')[0]}")
     st.caption(f"{LABELS[result['retriever']]} / Top-k {result['top_k']} / 检索 {result['retrieval_seconds']:.3f} s")
+    if result.get("strategy"):
+        st.caption(f"基础证据 {result['seed_count']} 段＋补充 {result['retrieved_count']-result['seed_count']} 段；"
+                   f"补充内容 {result['extension_tokens']} / {result['extension_budget']} token。")
     if result["notice"]:
         st.warning(result["notice"])
         st.link_button("查阅 AUP 官方指南", OFFICIAL_GUIDE, icon=":material/open_in_new:")
@@ -124,6 +141,11 @@ def show_result(result, *, paired=False):
         b.metric("输入 token", result["input_tokens"] if result["input_tokens"] is not None else "—")
         c.metric("输出 token", result["output_tokens"] if result["output_tokens"] is not None else "—")
         st.caption(f"分数门槛：{result['min_score']}；索引准备耗时：{result.get('index_seconds', 0) or 0:.3f} s（首次准备可能包括下载与编码）")
+        if result.get("strategy"):
+            st.caption(f"证据方案 {result['strategy']}；预算分词器：{result['budget_tokenizer']}；"
+                       f"组包输入：{result['planned_input_tokens']} token。")
+            if result.get("raw_answer"):
+                st.code(result["raw_answer"], language="json")
         if result.get("retriever_model"):
             st.caption("嵌入模型：" + result["retriever_model"] + " / CPU ONNX")
             st.caption(f"向量索引：{result['indexed_passages']} × {result['index_dimensions']}；"
@@ -202,15 +224,25 @@ with st.sidebar:
         for symbol, label in [("terminal", "Python 与 GPU 环境"), ("globe", "启动网页与端口访问"), ("save", "保存文件与管理会话")]
     ))
     with st.expander("演示参数", icon=":material/tune:"):
-        method = st.selectbox("检索器", list(LABELS), format_func=LABELS.get, key="retriever-method", on_change=reset_results)
-        k = st.select_slider("Top-k：最多检索片段数", options=[1, 3, 6, 10], value=3, on_change=reset_results)
-        comparison = st.selectbox("对比方式", ["单次检索", "对比三种检索器（只检索）", "对比 Top-k 3 / 6"], key="comparison", on_change=reset_results)
-        compare_retrievers = comparison == "对比三种检索器（只检索）"
-        paired = comparison == "对比 Top-k 3 / 6"
-        defaults = {"tfidf": 0.04, "bm25": 0.0, "dense": 0.0}
-        min_score = st.number_input("最低分筛选门槛", min_value=0.0, value=defaults[method], step=0.01,
-                                    key="threshold-" + method, disabled=compare_retrievers, on_change=reset_results)
-        st.caption("三种检索器分别使用默认门槛。E5 默认保留 Top-k；语义分数尚未校准，需核对原文。首次使用会下载并编码文档。" if compare_retrievers or method == "dense" else "低于门槛的片段会被过滤。不同算法的分数不在同一个尺度。")
+        strategy = st.selectbox("证据方案", list(STRATEGIES), format_func=STRATEGIES.get,
+                                key="evidence-strategy", on_change=reset_results)
+        planned = strategy != "custom"
+        if planned:
+            method, k, min_score = "dense", 3, 0.0
+            compare_retrievers = paired = False
+            st.caption("X 先融合关键词与语义检索，再从后续排名补充完整原文；补充上限为 512 token。")
+            if backend == "transformers":
+                st.caption("云端与本地使用不同的生成模型，请结合下方原文核对操作建议。")
+        else:
+            method = st.selectbox("检索器", list(RETRIEVER_LABELS), format_func=RETRIEVER_LABELS.get, key="retriever-method", on_change=reset_results)
+            k = st.select_slider("Top-k：最多检索片段数", options=[1, 3, 6, 10], value=3, on_change=reset_results)
+            comparison = st.selectbox("对比方式", ["单次检索", "对比三种检索器（只检索）", "对比 Top-k 3 / 6"], key="comparison", on_change=reset_results)
+            compare_retrievers = comparison == "对比三种检索器（只检索）"
+            paired = comparison == "对比 Top-k 3 / 6"
+            defaults = {"tfidf": 0.04, "bm25": 0.0, "dense": 0.0}
+            min_score = st.number_input("最低分筛选门槛", min_value=0.0, value=defaults[method], step=0.01,
+                                        key="threshold-" + method, disabled=compare_retrievers, on_change=reset_results)
+            st.caption("分数属于不同尺度，不能直接比较大小。首次语义检索需要下载模型和编码文档。")
     st.html(f'<div class="sidebar-footnote">{len(data["documents"])} 页官方文档＋本项目说明<br>共 {len(data["passages"])} 个片段 / {escape(data["updated"])}</div>')
     if not data["complete_aup"]:
         st.warning("官方文档尚未完整准备，当前只使用已导入的资料。")
@@ -256,30 +288,42 @@ with ask_tab:
             st.warning("请在侧栏的“模型与运行环境”中填写模型名称。")
         else:
             try:
-                generator = None
-                methods = list(LABELS) if compare_retrievers else [method]
-                active_retrievers = {}
-                for current_method in methods:
-                    with st.spinner(f"准备 {LABELS[current_method]}，首次可能下载模型和构建索引…"):
-                        active_retrievers[current_method] = retrieval_resource(
-                            data_revision, current_method, None if compare_retrievers else min_score)
-                retriever = active_retrievers[method] if not compare_retrievers else None
-                if mode == "模型问答" and not compare_retrievers and retriever.search(question, k):
-                    with st.spinner("正在加载并预热模型，首次运行需要一些时间…"):
-                        generator = model_resource(backend, model_id.strip(), base_url, num_ctx)
-                with st.spinner("正在查阅指南…"):
-                    results = []
-                    selected = next((q for q in data["questions"] if q["question"] == question.strip()), None)
-                    combinations = [(name, size) for name in methods for size in ([3, 6] if paired else [k])]
-                    for current_method, top_k in combinations:
-                        result = run_query(active_retrievers[current_method], question, top_k, generator,
-                                           profile=data["prompt_profile"], max_new_tokens=data["max_new_tokens"],
-                                           knowledge_base=data["id"])
+                if planned:
+                    with st.spinner("准备证据方案与模型，首次使用需要一些时间…"):
+                        active = hybrid_resource(data_revision)
+                        runtime = plan_runtime(backend if mode == "模型问答" else None,
+                                               model_id.strip() if mode == "模型问答" else None,
+                                               base_url, num_ctx)
+                    with st.spinner("检索资料并整理操作建议…"):
+                        result = run_plan_query(active, question, strategy, runtime,
+                                                generate=mode == "模型问答", knowledge_base=data["id"])
                         result["recorded_at"] = datetime.now(timezone.utc).isoformat()
-                        if selected:
-                            result["question_id"] = selected["id"]
-                        results.append(result)
-                    st.session_state["results"] = results
+                        st.session_state["results"] = [result]
+                else:
+                    generator = None
+                    methods = list(RETRIEVER_LABELS) if compare_retrievers else [method]
+                    active_retrievers = {}
+                    for current_method in methods:
+                        with st.spinner(f"准备 {LABELS[current_method]}，首次可能下载模型和构建索引…"):
+                            active_retrievers[current_method] = retrieval_resource(
+                                data_revision, current_method, None if compare_retrievers else min_score)
+                    retriever = active_retrievers[method] if not compare_retrievers else None
+                    if mode == "模型问答" and not compare_retrievers and retriever.search(question, k):
+                        with st.spinner("正在加载并预热模型，首次运行需要一些时间…"):
+                            generator = model_resource(backend, model_id.strip(), base_url, num_ctx)
+                    with st.spinner("正在查阅指南…"):
+                        results = []
+                        selected = next((q for q in data["questions"] if q["question"] == question.strip()), None)
+                        combinations = [(name, size) for name in methods for size in ([3, 6] if paired else [k])]
+                        for current_method, top_k in combinations:
+                            result = run_query(active_retrievers[current_method], question, top_k, generator,
+                                               profile=data["prompt_profile"], max_new_tokens=data["max_new_tokens"],
+                                               knowledge_base=data["id"])
+                            result["recorded_at"] = datetime.now(timezone.utc).isoformat()
+                            if selected:
+                                result["question_id"] = selected["id"]
+                            results.append(result)
+                        st.session_state["results"] = results
             except Exception as exc:
                 st.error("本次问答未完成。请检查运行环境后重试，或切换到检索预览。")
                 with st.expander("查看错误详情", expanded=True):
