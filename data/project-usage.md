@@ -32,6 +32,22 @@ python3 -m streamlit run app.py
 
 Windows 本地已安装 Ollama、项目依赖和模型时，可在项目目录的 PowerShell 运行 `./start_local.ps1`。模型保存在自定义目录时，用 `-ModelsPath` 指定实际目录；该参数仅在脚本新启动 Ollama 服务时生效。脚本检查已安装模型，不自动下载权重；已有 Ollama 服务会直接复用。
 
+## 使用外部 API
+
+项目支持在 CPU 会话通过 OpenAI 兼容 API 生成回答。Windows 完成项目依赖安装后，在仓库目录运行：
+
+```powershell
+.\start_local.ps1 -Backend api
+```
+
+AUP 的 CPU 或 GPU Code Server 会话在项目目录运行：
+
+```bash
+RAG_BACKEND=api bash start_aup.sh
+```
+
+在左侧“模型与运行环境”选择“外部 API / OpenAI 兼容”，填写服务商给出的 HTTPS API 地址、模型 ID 和密钥，再选择“模型问答”。默认使用 BM25，网页和检索可以在 CPU 上运行。选择 D/H/X 时，应用会准备 E5 模型与参考分词器。每次问答会向所选服务商发送本次问题与已检索的证据片段。
+
 ## 完整资料库与检索对照
 
 知识库由 data/source_manifest.json 中的 AUP 官方用户指南和相关开发文档原文，加本项目这份使用说明组成。每个片段记录原文页面、章节和抓取日期。首页快捷问题只提供提问入口，没有预设答案。

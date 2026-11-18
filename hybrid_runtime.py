@@ -1,12 +1,13 @@
 """Web runtime for dense retrieval, rank fusion and budgeted evidence expansion."""
 import hashlib
+import json
 import time
 from threading import Lock
 
-from answer_protocol import render_passages, retrieval_query, parse_answer, response_status
-from structured_model import QwenTokenizer, SYSTEM, make_prompt, IsolatedLocalModel
+from answer_protocol import display_answer, retrieval_query, response_status, structured_messages
+from structured_model import QwenTokenizer, make_prompt, IsolatedLocalModel
 from hybrid_retrieval import build_contexts
-from rag import DEFAULT_LOCAL_MODEL, DEFAULT_OLLAMA_URL, Generator
+from rag import DEFAULT_LOCAL_MODEL, DEFAULT_OLLAMA_URL, Generator, create_generator
 
 STRATEGIES = {"X": "X · 融合检索＋证据补充（推荐）", "H": "H · 融合检索 Top-3",
               "D": "D · E5 Top-3", "custom": "自定义检索演示"}
@@ -14,8 +15,9 @@ RESULT_LABELS = {"plan_" + k: v for k, v in STRATEGIES.items() if k != "custom"}
 
 
 class PlanRuntime:
-    """Use fixed local prompt/schema/options; cloud models use their own tokenizer."""
-    def __init__(self, backend=None, model_id=None, base_url=DEFAULT_OLLAMA_URL, num_ctx=8192):
+    """Prepare evidence for the local, GPU, or chat API generator."""
+    def __init__(self, backend=None, model_id=None, base_url=DEFAULT_OLLAMA_URL, num_ctx=8192,
+                 *, api_key=""):
         self.backend, self.model_id, self.num_ctx = backend, model_id, num_ctx
         self.lock = Lock()
         self.model = None
@@ -33,18 +35,27 @@ class PlanRuntime:
             self.tokenizer = self.model.tokenizer
             self.count = lambda text: len(self.tokenizer.encode(text, add_special_tokens=False))
             self.prompt = self.cloud_prompt
+        elif backend == "api":
+            self.model = create_generator("api", model_id, base_url=base_url, api_key=api_key)
+            self.model_id = self.model.model_id
+            self.tokenizer = QwenTokenizer()
+            self.count = self.tokenizer.count
+            self.prompt = lambda question, passages: json.dumps(
+                structured_messages(question, passages), ensure_ascii=False, separators=(",", ":")
+            )
         else:
             raise ValueError("不支持的生成后端。")
 
     def cloud_prompt(self, question, passages):
-        messages = [{"role": "system", "content": SYSTEM},
-                    {"role": "user", "content": f"资料：\n{render_passages(passages)}\n\n问题：{question}\n请按JSON格式作答。"}]
-        return self.tokenizer.apply_chat_template(messages, tokenize=False,
+        return self.tokenizer.apply_chat_template(structured_messages(question, passages), tokenize=False,
                                                   add_generation_prompt=True, enable_thinking=False)
 
     def generate(self, context):
         # Unload/generate is one critical section across Streamlit sessions.
         with self.lock:
+            if self.backend == "api":
+                return dict(self.model.complete(json.loads(context["prompt"]), context["max_new_tokens"]),
+                            prompt_mode="openai-compatible chat messages")
             if self.backend == "ollama":
                 output = self.model.generate(context["prompt"], 512)
                 if response_status(output) != "ok":
@@ -79,28 +90,6 @@ class PlanRuntime:
                         cloud_quality_evaluated=False)
 
 
-def display_answer(raw, passages):
-    """Do not repair malformed JSON or turn a refusal into an actionable answer."""
-    parsed = parse_answer(raw)
-    if not parsed["parse_ok"]:
-        return dict(answer=None, status="format_error", notice="模型回答格式不完整，请先查阅下方原文。", parse_ok=False)
-    obj = parsed["parsed"]
-    if obj["abstain"]:
-        return dict(answer=obj["explanation"], status="abstained", notice="资料不足，模型未给出确定操作建议。", parse_ok=True)
-    if not obj["short_answer"].strip():
-        return dict(answer=None, status="empty_answer", notice="模型未给出直接答案，请核对原文。", parse_ok=True)
-    valid = {f"P{i}" for i in range(1, len(passages)+1)}
-    citations = obj["citations"]
-    invalid = [c for c in citations if c not in valid]
-    answer = obj["short_answer"] + "\n\n" + obj["explanation"]
-    refs = list(dict.fromkeys(c for c in citations if c in valid))
-    if refs:
-        answer += "\n\n" + " ".join(f"[{c}]" for c in refs)
-    return dict(answer=answer, status="citation_warning" if invalid or not refs else "matched",
-                notice="部分引用编号无效或缺失，请核对原文。" if invalid or not refs else "",
-                parse_ok=True, invalid_citations=invalid)
-
-
 def run_plan_query(retriever, question, strategy, runtime, *, generate=False, knowledge_base="unspecified"):
     if strategy not in ("D", "H", "X"):
         raise ValueError("未知证据方案。")
@@ -110,6 +99,8 @@ def run_plan_query(retriever, question, strategy, runtime, *, generate=False, kn
                              lambda ps: runtime.prompt(question, ps), num_ctx=runtime.num_ctx)[strategy]
     ps = context["passages"]
     dense = retriever.dense
+    budget_tokenizer = {"transformers": runtime.model_id, "api": "Qwen2.5 reference (API estimate)"}.get(
+        runtime.backend, "Qwen2.5 fixed tokenizer")
     result = dict(question=question.strip(), top_k=3, mode="model" if generate else "retrieval_preview",
         model=runtime.model_id if generate else None, backend=runtime.backend,
         retriever="plan_"+strategy, strategy=strategy,
@@ -127,7 +118,7 @@ def run_plan_query(retriever, question, strategy, runtime, *, generate=False, kn
         planned_input_tokens=context["input_tokens"],
         prompt_sha256=hashlib.sha256(context["prompt"].encode()).hexdigest(),
         rule_version=context["rule_version"],
-        budget_tokenizer="Qwen2.5 fixed tokenizer" if runtime.backend != "transformers" else runtime.model_id)
+        budget_tokenizer=budget_tokenizer)
     if context["status"] != "ready":
         result["notice"] = "没有可用资料。" if not ps else "资料超过上下文预算，请缩短问题。"
     elif generate:

@@ -4,7 +4,9 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$Model = 'qwen2.5:3b',
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8501
+    [int]$Port = 8501,
+    [ValidateSet('ollama', 'api')]
+    [string]$Backend = 'ollama'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +26,13 @@ function Read-OllamaModels {
     }
 }
 
+function Start-ProjectWeb {
+    & $pythonPath -m streamlit run app.py --server.address=127.0.0.1 --server.port=$Port --browser.gatherUsageStats=false
+    if ($LASTEXITCODE -ne 0) {
+        throw "Streamlit exited with code $LASTEXITCODE. If port $Port is occupied, stop the old web app or specify -Port 8502."
+    }
+}
+
 Push-Location -LiteralPath $PSScriptRoot
 try {
     if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
@@ -32,6 +41,13 @@ try {
     & $pythonPath -c "import streamlit, sklearn, fastembed, jieba, rank_bm25"
     if ($LASTEXITCODE -ne 0) {
         throw 'Project dependencies are missing. Run .\.venv\Scripts\python.exe -m pip install -r requirements.txt first.'
+    }
+    if ($Backend -eq 'api') {
+        $env:RAG_BACKEND = 'api'
+        $env:MODEL_ID = if ($PSBoundParameters.ContainsKey('Model')) { $Model } else { $null }
+        Write-Host "Open http://127.0.0.1:$Port and enter the API address, model ID and key in the sidebar."
+        Start-ProjectWeb
+        return
     }
     if ($ModelsPath) {
         if (-not (Test-Path -LiteralPath $ModelsPath -PathType Container)) {
@@ -88,10 +104,7 @@ try {
     $env:OLLAMA_BASE_URL = $baseUrl
     Write-Host "Starting the web app with $Model. Open http://127.0.0.1:$Port"
     Write-Host 'Press Ctrl+C to stop the web app. Ollama remains available for command-line evaluations.'
-    & $pythonPath -m streamlit run app.py --server.address=127.0.0.1 --server.port=$Port --browser.gatherUsageStats=false
-    if ($LASTEXITCODE -ne 0) {
-        throw "Streamlit exited with code $LASTEXITCODE. If port $Port is occupied, stop the old web app or specify -Port 8502."
-    }
+    Start-ProjectWeb
 } finally {
     foreach ($name in $environmentNames) {
         [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')

@@ -16,6 +16,8 @@ from urllib.request import Request, urlopen
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+from api_backend import ApiGenerator
+
 DEFAULT_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
 DEFAULT_LOCAL_MODEL = "qwen2.5:3b"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
@@ -339,16 +341,18 @@ class OllamaGenerator:
 
 
 def create_generator(backend: str = "transformers", model_id: str | None = None,
-                     base_url: str = DEFAULT_OLLAMA_URL, num_ctx: int = 8192):
+                     base_url: str | None = None, num_ctx: int = 8192, *, api_key: str = ""):
     if backend == "transformers":
         return Generator(model_id or DEFAULT_MODEL)
     if backend == "ollama":
-        return OllamaGenerator(model_id or DEFAULT_LOCAL_MODEL, base_url, num_ctx)
+        return OllamaGenerator(model_id or DEFAULT_LOCAL_MODEL, base_url or DEFAULT_OLLAMA_URL, num_ctx)
+    if backend == "api":
+        return ApiGenerator(model_id or "", base_url or "", api_key)
     raise ValueError(f"不支持的生成后端：{backend}")
 
 
 def run_query(retriever: Retriever, question: str, k: int,
-              generator: Generator | OllamaGenerator | None = None, *, profile: str = "general",
+              generator: Generator | OllamaGenerator | ApiGenerator | None = None, *, profile: str = "general",
               max_new_tokens: int = 128, knowledge_base: str = "unspecified") -> dict:
     started = time.perf_counter()
     passages = retriever.search(question, k)

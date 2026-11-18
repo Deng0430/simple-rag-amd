@@ -5,18 +5,29 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 aup_python="${AUP_PYTHON:-python3}"
 venv_python=".venv/bin/python"
 
-echo "Checking the platform's PyTorch and GPU..."
-"$aup_python" - <<'PY'
+pip_options=()
+if [[ "${RAG_BACKEND:-transformers}" == "api" ]]; then
+    echo "Starting in external API mode. Enter provider settings in the web sidebar."
+else
+    echo "Checking the platform's PyTorch and GPU..."
+    "$aup_python" - <<'PY'
+from pathlib import Path
 import torch
 
 print(f"PyTorch: {torch.__version__}; ROCm: {torch.version.hip}")
 if not torch.version.hip or not torch.cuda.is_available():
     raise SystemExit("Select an AUP GPU environment with preinstalled ROCm PyTorch.")
 print(f"GPU: {torch.cuda.get_device_name(0)}")
+
+target = Path(".cache/aup-constraints.txt")
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text(f"torch=={torch.__version__}\n", encoding="utf-8")
 PY
+    pip_options=(-c .cache/aup-constraints.txt)
+fi
 
 if ! "$venv_python" -m pip --version >/dev/null 2>&1; then
-    echo "Creating a project environment that inherits ROCm PyTorch..."
+    echo "Creating a project environment with access to platform packages..."
     if ! "$aup_python" -m venv --system-site-packages .venv; then
         echo "Standard venv is unavailable; using the official PyPA virtualenv zipapp..."
         "$aup_python" - <<'PY'
@@ -32,18 +43,8 @@ PY
     fi
 fi
 
-# Constrain torch to the platform build even if a future dependency requests it.
-"$aup_python" - <<'PY'
-from pathlib import Path
-import torch
-
-target = Path(".cache/aup-constraints.txt")
-target.parent.mkdir(parents=True, exist_ok=True)
-target.write_text(f"torch=={torch.__version__}\n", encoding="utf-8")
-PY
-
 echo "Installing the web app dependencies..."
-"$venv_python" -m pip install -c .cache/aup-constraints.txt -r requirements.txt
+"$venv_python" -m pip install "${pip_options[@]}" -r requirements.txt
 
 if [[ ! -f .cache/knowledge/corpus.json ]]; then
     echo "Preparing the official documentation corpus (cached for future starts)..."

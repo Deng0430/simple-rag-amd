@@ -7,6 +7,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from api_backend import ApiError, api_endpoint
 from rag import (DEFAULT_MODEL, DEFAULT_LOCAL_MODEL, DEFAULT_OLLAMA_URL,
                  create_generator, environment, export_csv, ollama_status, run_query)
 from knowledge import CORPUS, load_knowledge, signature
@@ -142,10 +143,11 @@ def show_result(result, *, paired=False):
         c.metric("输出 token", result["output_tokens"] if result["output_tokens"] is not None else "—")
         st.caption(f"分数门槛：{result['min_score']}；索引准备耗时：{result.get('index_seconds', 0) or 0:.3f} s（首次准备可能包括下载与编码）")
         if result.get("strategy"):
+            estimate = "（估算）" if result.get("backend") == "api" else ""
             st.caption(f"证据方案 {result['strategy']}；预算分词器：{result['budget_tokenizer']}；"
-                       f"组包输入：{result['planned_input_tokens']} token。")
-            if result.get("raw_answer"):
-                st.code(result["raw_answer"], language="json")
+                       f"组包输入：{result['planned_input_tokens']} token{estimate}。")
+        if result.get("raw_answer"):
+            st.code(result["raw_answer"], language="json")
         if result.get("retriever_model"):
             st.caption("嵌入模型：" + result["retriever_model"] + " / CPU ONNX")
             st.caption(f"向量索引：{result['indexed_passages']} × {result['index_dimensions']}；"
@@ -153,7 +155,12 @@ def show_result(result, *, paired=False):
         if result.get("reference_answers"):
             st.write("核对要点：" + result["reference_answers"])
             st.caption("参考指南已检索到" if result["reference_passage_retrieved"] else "未检索到参考指南")
-        if result.get("backend") == "ollama":
+        if result.get("backend") == "api":
+            st.caption(f"生成模型：{result['model']} / 外部 API")
+            if result.get("api_host"):
+                st.caption(f"服务地址：{result['api_host']}")
+            st.caption("请求耗时包含网络和服务商生成。输入与输出 token 使用服务商返回值。")
+        elif result.get("backend") == "ollama":
             st.caption(f"生成模型：{result['model']} / Ollama / {result.get('model_quantization', '未知量化')}")
             st.caption("请求计时包含本次服务调用；首次预热单列。模型重新加载时，加载耗时会包含在请求内。")
             if result.get("load_seconds") is not None:
@@ -164,9 +171,8 @@ def show_result(result, *, paired=False):
 
 data_revision = signature()
 data = resources(data_revision)
-env = runtime_info()
-gpu_available = bool(env.get("gpu"))
 st.session_state.setdefault("question", "")
+default_backend = os.getenv("RAG_BACKEND", "transformers")
 
 with st.sidebar:
     st.html(
@@ -174,20 +180,35 @@ with st.sidebar:
         '<div><div class="aup-brand-title">AUP 开发助手</div>'
         '<div class="aup-brand-subtitle">云端入门，有据可查</div></div></div>'
     )
-    with st.expander("模型与运行环境", icon=":material/settings:"):
-        backends = {"transformers": "AUP / Transformers", "ollama": "本地 / Ollama"}
-        backend = st.selectbox("模型运行方式", list(backends), format_func=backends.get,
-                               index=1 if os.getenv("RAG_BACKEND") == "ollama" else 0,
+    with st.expander("模型与运行环境", expanded=default_backend == "api", icon=":material/settings:"):
+        backends = {"transformers": "AUP / Transformers", "ollama": "本地 / Ollama",
+                    "api": "外部 API / OpenAI 兼容"}
+        backend_options = list(backends)
+        backend = st.selectbox("模型运行方式", backend_options, format_func=backends.get,
+                               index=backend_options.index(default_backend) if default_backend in backends else 0,
                                key="generation-backend", on_change=reset_results)
-        default_model = DEFAULT_LOCAL_MODEL if backend == "ollama" else DEFAULT_MODEL
-        if backend == os.getenv("RAG_BACKEND", "transformers"):
+        default_model = {"ollama": DEFAULT_LOCAL_MODEL, "transformers": DEFAULT_MODEL, "api": ""}[backend]
+        if backend == default_backend:
             default_model = os.getenv("MODEL_ID", default_model)
         model_id = st.text_input("生成模型", value=default_model,
+                                 placeholder="填写服务商提供的模型 ID" if backend == "api" else None,
                                  key="model-" + backend, on_change=reset_results)
         base_url = DEFAULT_OLLAMA_URL
         num_ctx = 8192
-        local_status = None
-        if backend == "ollama":
+        api_key = ""
+        api_host_ready = False
+        if backend == "api":
+            base_url = st.text_input("API 地址", placeholder="https://api.openai.com/v1",
+                                     key="api-base-url", on_change=reset_results)
+            api_key = st.text_input("API 密钥", type="password", key="api-key", on_change=reset_results)
+            if base_url.strip():
+                try:
+                    api_endpoint(base_url)
+                    api_host_ready = True
+                except ValueError as exc:
+                    st.warning(str(exc))
+            st.caption("发起问答时，当前问题和检索到的资料片段会发送给所选服务商。密钥仅用于当前网页会话。")
+        elif backend == "ollama":
             base_url = st.text_input("Ollama 服务地址", value=os.getenv("OLLAMA_BASE_URL", DEFAULT_OLLAMA_URL),
                                      on_change=reset_results)
             num_ctx = int(st.number_input("上下文窗口（token）", min_value=512, max_value=32768,
@@ -198,18 +219,24 @@ with st.sidebar:
                 st.rerun()
             st.caption("使用 Ollama 已安装的模型；首次问答会加载并预热。")
             st.json(local_status)
-        st.caption("以下是网页 Python 环境；Ollama 在独立进程中运行。" if backend == "ollama" else "当前 Python 环境")
-        st.json(env)
-    if backend == "ollama":
+        if backend != "api":
+            env = runtime_info()
+            st.caption("以下是网页 Python 环境；Ollama 在独立进程中运行。" if backend == "ollama" else "当前 Python 环境")
+            st.json(env)
+    if backend == "api":
+        generation_available = bool(api_host_ready and model_id.strip() and api_key.strip())
+        status_title = "外部 API 已配置" if generation_available else "外部 API 待配置"
+        status_detail = "选择模型问答并提交问题即可调用。" if generation_available else "请填写 API 地址、模型 ID 和密钥。"
+    elif backend == "ollama":
         model_names = {item["name"] for item in local_status.get("models", [])}
         generation_available = local_status["available"] and model_id.strip() in model_names
         status_title = "本地模型已就绪" if generation_available else "本地模型待连接"
         status_detail = (model_id.strip() + " / Ollama") if generation_available else (
             local_status.get("error") or "Ollama 中未找到该模型，请检查名称。")
     else:
-        generation_available = gpu_available
-        status_title = "GPU 已就绪" if gpu_available else "资料检索已就绪"
-        status_detail = env["gpu"] if gpu_available else "当前 Python 环境未检测到 GPU，可使用检索预览或本地 Ollama。"
+        generation_available = bool(env.get("gpu"))
+        status_title = "GPU 已就绪" if generation_available else "资料检索已就绪"
+        status_detail = env["gpu"] if generation_available else "可切换到外部 API、本地 Ollama 或检索预览。"
     st.html('<div class="sidebar-label">回答方式</div>')
     mode = st.radio("回答方式", ["仅检索预览", "模型问答"], index=1 if generation_available else 0,
                     key="mode", label_visibility="collapsed", on_change=reset_results)
@@ -224,8 +251,11 @@ with st.sidebar:
         for symbol, label in [("terminal", "Python 与 GPU 环境"), ("globe", "启动网页与端口访问"), ("save", "保存文件与管理会话")]
     ))
     with st.expander("演示参数", icon=":material/tune:"):
-        strategy = st.selectbox("证据方案", list(STRATEGIES), format_func=STRATEGIES.get,
-                                key="evidence-strategy", on_change=reset_results)
+        strategy_options = list(STRATEGIES)
+        strategy = st.selectbox("证据方案", strategy_options, format_func=STRATEGIES.get,
+                                index=strategy_options.index("custom") if backend == "api" else 0,
+                                key="api-evidence-strategy" if backend == "api" else "evidence-strategy",
+                                on_change=reset_results)
         planned = strategy != "custom"
         if planned:
             method, k, min_score = "dense", 3, 0.0
@@ -233,8 +263,14 @@ with st.sidebar:
             st.caption("X 先融合关键词与语义检索，再从后续排名补充完整原文；补充上限为 512 token。")
             if backend == "transformers":
                 st.caption("云端与本地使用不同的生成模型，请结合下方原文核对操作建议。")
+            elif backend == "api":
+                st.caption("D/H/X 首次准备 E5 与参考分词器。证据预算按参考分词器估算。")
         else:
-            method = st.selectbox("检索器", list(RETRIEVER_LABELS), format_func=RETRIEVER_LABELS.get, key="retriever-method", on_change=reset_results)
+            methods = list(RETRIEVER_LABELS)
+            method = st.selectbox("检索器", methods, format_func=RETRIEVER_LABELS.get,
+                                  index=methods.index("bm25") if backend == "api" else 0,
+                                  key="api-retriever-method" if backend == "api" else "retriever-method",
+                                  on_change=reset_results)
             k = st.select_slider("Top-k：最多检索片段数", options=[1, 3, 6, 10], value=3, on_change=reset_results)
             comparison = st.selectbox("对比方式", ["单次检索", "对比三种检索器（只检索）", "对比 Top-k 3 / 6"], key="comparison", on_change=reset_results)
             compare_retrievers = comparison == "对比三种检索器（只检索）"
@@ -256,8 +292,9 @@ with st.sidebar:
                 st.error(str(exc))
     st.link_button("AUP 官方使用指南", OFFICIAL_GUIDE, icon=":material/open_in_new:", use_container_width=True)
 
+model_badges = {"ollama": "本地模型问答", "transformers": "GPU 模型问答", "api": "外部 API 问答"}
 badge = "检索预览" if mode == "仅检索预览" else (
-    ("本地模型问答" if backend == "ollama" else "GPU 模型问答") if generation_available else "模型问答 · 待连接")
+    model_badges[backend] if generation_available else "模型问答 · 待连接")
 st.html(f'<div class="page-meta"><span class="page-meta-label">AMD AUP Learning Cloud 入门指南</span>'
         f'<span class="mode-badge">{icon("search" if mode == "仅检索预览" else "cloud", 15)}{badge}</span></div>')
 st.html('<h1>云端开发，下一步怎么做？</h1><p class="page-intro">从配置 Python 到打开网页，描述你遇到的问题，找到操作指南和回答依据。</p>')
@@ -271,7 +308,12 @@ with ask_tab:
                                     placeholder="粘贴报错，或描述你卡住的步骤。\n例如：Streamlit 已经启动，为什么浏览器打不开？")
             hint_column, action_column = st.columns([1.5, 1], vertical_alignment="center")
             with hint_column:
-                hint = "同一问题、同一资料库，只比较检索结果" if compare_retrievers else ("直接查阅原文，附来源链接" if mode == "仅检索预览" else "首次问答需要加载模型，请稍候")
+                if compare_retrievers:
+                    hint = "同一问题、同一资料库，只比较检索结果"
+                elif mode == "仅检索预览":
+                    hint = "直接查阅原文，附来源链接"
+                else:
+                    hint = "调用已配置的外部 API" if backend == "api" else "首次问答需要加载模型，请稍候"
                 st.html(f'<div class="question-hint">{hint}</div>')
             with action_column:
                 single = st.form_submit_button(
@@ -282,21 +324,26 @@ with ask_tab:
 
     if single:
         reset_results()
+        generate = mode == "模型问答" and not compare_retrievers
         if not question.strip():
             st.warning("请先输入问题，也可以点击下方常见问题填入。")
-        elif mode == "模型问答" and not model_id.strip() and not compare_retrievers:
+        elif generate and not model_id.strip():
             st.warning("请在侧栏的“模型与运行环境”中填写模型名称。")
+        elif generate and not generation_available:
+            st.warning("请先在侧栏的“模型与运行环境”中完成模型配置。")
         else:
             try:
                 if planned:
                     with st.spinner("准备证据方案与模型，首次使用需要一些时间…"):
                         active = hybrid_resource(data_revision)
-                        runtime = plan_runtime(backend if mode == "模型问答" else None,
-                                               model_id.strip() if mode == "模型问答" else None,
-                                               base_url, num_ctx)
+                        if generate and backend == "api":
+                            runtime = PlanRuntime(backend, model_id, base_url, num_ctx, api_key=api_key)
+                        else:
+                            runtime = plan_runtime(backend if generate else None,
+                                                   model_id.strip() if generate else None, base_url, num_ctx)
                     with st.spinner("检索资料并整理操作建议…"):
                         result = run_plan_query(active, question, strategy, runtime,
-                                                generate=mode == "模型问答", knowledge_base=data["id"])
+                                                generate=generate, knowledge_base=data["id"])
                         result["recorded_at"] = datetime.now(timezone.utc).isoformat()
                         st.session_state["results"] = [result]
                 else:
@@ -308,9 +355,12 @@ with ask_tab:
                             active_retrievers[current_method] = retrieval_resource(
                                 data_revision, current_method, None if compare_retrievers else min_score)
                     retriever = active_retrievers[method] if not compare_retrievers else None
-                    if mode == "模型问答" and not compare_retrievers and retriever.search(question, k):
-                        with st.spinner("正在加载并预热模型，首次运行需要一些时间…"):
-                            generator = model_resource(backend, model_id.strip(), base_url, num_ctx)
+                    if generate and retriever.search(question, k):
+                        if backend == "api":
+                            generator = create_generator(backend, model_id, base_url=base_url, api_key=api_key)
+                        else:
+                            with st.spinner("正在加载并预热模型，首次运行需要一些时间…"):
+                                generator = model_resource(backend, model_id.strip(), base_url, num_ctx)
                     with st.spinner("正在查阅指南…"):
                         results = []
                         selected = next((q for q in data["questions"] if q["question"] == question.strip()), None)
@@ -324,6 +374,8 @@ with ask_tab:
                                 result["question_id"] = selected["id"]
                             results.append(result)
                         st.session_state["results"] = results
+            except ApiError as exc:
+                st.error(str(exc))
             except Exception as exc:
                 st.error("本次问答未完成。请检查运行环境后重试，或切换到检索预览。")
                 with st.expander("查看错误详情", expanded=True):

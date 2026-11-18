@@ -9,6 +9,7 @@
 !/requirements.txt
 !/app.py
 !/rag.py
+!/api_backend.py
 !/answer_protocol.py
 !/structured_model.py
 !/hybrid_retrieval.py
@@ -46,3 +47,4 @@
 !/tests/test_retrievers_knowledge.py
 !/tests/test_hybrid_retrieval.py
 !/tests/test_hybrid_runtime.py
+!/tests/test_api_backend.py
